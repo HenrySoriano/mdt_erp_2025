@@ -1,0 +1,524 @@
+[
+    {
+        "model": "infrastructure.question",
+        "pk": 1,
+        "fields": {
+            "dimension": 1,
+            "number": 1,
+            "text": "Considero que son aceptables las solicitudes y requerimientos que me piden otras personas (compañeros de trabajo, usuarios, clientes)."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 2,
+        "fields": {
+            "dimension": 1,
+            "number": 2,
+            "text": "Decido el ritmo de trabajo en mis actividades."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 3,
+        "fields": {
+            "dimension": 1,
+            "number": 3,
+            "text": "Las actividades y/o responsabilidades que me fueron asignadas no me causan estrés."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 4,
+        "fields": {
+            "dimension": 1,
+            "number": 4,
+            "text": "Tengo suficiente tiempo para realizar todas las actividades que me han sido encomendadas dentro de mi jornada laboral."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 5,
+        "fields": {
+            "dimension": 2,
+            "number": 5,
+            "text": "Considero que tengo los suficientes conocimientos, habilidades y destrezas para desarrollar el trabajo para el cual fui contratado."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 6,
+        "fields": {
+            "dimension": 2,
+            "number": 6,
+            "text": "En mi trabajo aprendo y adquiero nuevos conocimientos, habilidades y destrezas de mis compañeros de trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 7,
+        "fields": {
+            "dimension": 2,
+            "number": 7,
+            "text": "En mi trabajo se cuenta con un plan de carrera, capacitación y/o entrenamiento para el desarrollo de mis conocimientos, habilidades y destrezas."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 8,
+        "fields": {
+            "dimension": 2,
+            "number": 8,
+            "text": "En mi trabajo se evalúa objetiva y periódicamente las actividades que realizo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 9,
+        "fields": {
+            "dimension": 3,
+            "number": 9,
+            "text": "En mi trabajo se reconoce y se da crédito a la persona que realiza un buen trabajo o logran sus objetivos."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 10,
+        "fields": {
+            "dimension": 3,
+            "number": 10,
+            "text": "Mi jefe inmediato está dispuesto a escuchar propuestas de cambio e iniciativas de trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 11,
+        "fields": {
+            "dimension": 3,
+            "number": 11,
+            "text": "Mi jefe inmediato establece metas, plazos claros y factibles para el cumplimiento de mis funciones o actividades."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 12,
+        "fields": {
+            "dimension": 3,
+            "number": 12,
+            "text": "Mi jefe inmediato interviene, brinda apoyo, soporte y se preocupa cuando tengo demasiado trabajo que realizar."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 13,
+        "fields": {
+            "dimension": 3,
+            "number": 13,
+            "text": "Mi jefe inmediato me brinda suficientes lineamientos y retroalimentación para el desempeño de mi trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 14,
+        "fields": {
+            "dimension": 3,
+            "number": 14,
+            "text": "Mi jefe inmediato pone en consideración del equipo de trabajo, las decisiones que pueden afectar a todos."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 15,
+        "fields": {
+            "dimension": 4,
+            "number": 15,
+            "text": "En mi trabajo existen espacios de discusión para debatir abiertamente los problemas comunes y diferencias de opinión."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 16,
+        "fields": {
+            "dimension": 4,
+            "number": 16,
+            "text": "Me es permitido realizar el trabajo con colaboración de mis compañeros de trabajo y/u otras áreas."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 17,
+        "fields": {
+            "dimension": 4,
+            "number": 17,
+            "text": "Mi opinión es tomada en cuenta con respecto a fechas límites en el cumplimiento de mis actividades o cuando exista cambio en mis funciones."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 18,
+        "fields": {
+            "dimension": 4,
+            "number": 18,
+            "text": "Se me permite aportar con ideas para mejorar las actividades y la organización del trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 19,
+        "fields": {
+            "dimension": 5,
+            "number": 19,
+            "text": "Considero que las formas de comunicación en mi trabajo son adecuadas, accesibles y de fácil comprensión."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 20,
+        "fields": {
+            "dimension": 5,
+            "number": 20,
+            "text": "En mi trabajo se informa regularmente de la gestión y logros de la empresa o institución a todos los trabajadores y servidores."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 21,
+        "fields": {
+            "dimension": 5,
+            "number": 21,
+            "text": "En mi trabajo se respeta y se toma en consideración las limitaciones de las personas con discapacidad para la asignación de roles y tareas."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 22,
+        "fields": {
+            "dimension": 5,
+            "number": 22,
+            "text": "En mi trabajo tenemos reuniones suficientes y significantes para el cumplimiento de los objetivos."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 23,
+        "fields": {
+            "dimension": 5,
+            "number": 23,
+            "text": "Las metas y objetivos en mi trabajo son claros y alcanzables."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 24,
+        "fields": {
+            "dimension": 5,
+            "number": 24,
+            "text": "Siempre dispongo de tareas y actividades a realizar en mi jornada y lugar de trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 25,
+        "fields": {
+            "dimension": 6,
+            "number": 25,
+            "text": "Después del trabajo tengo la suficiente energía como para realizar otras actividades."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 26,
+        "fields": {
+            "dimension": 6,
+            "number": 26,
+            "text": "En mi trabajo se me permite realizar pausas de periodo corto para renovar y recuperar la energía."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 27,
+        "fields": {
+            "dimension": 6,
+            "number": 27,
+            "text": "En mi trabajo tengo tiempo para dedicarme a reflexionar sobre mi desempeño en el trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 28,
+        "fields": {
+            "dimension": 6,
+            "number": 28,
+            "text": "Tengo un horario y jornada de trabajo que se ajusta a mis expectativas y exigencias laborales."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 29,
+        "fields": {
+            "dimension": 6,
+            "number": 29,
+            "text": "Todos los días siento que he descansado lo suficiente y que tengo la energía para iniciar mi trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 30,
+        "fields": {
+            "dimension": 7,
+            "number": 30,
+            "text": "El trabajo está organizado de tal manera que fomenta la colaboración de equipo y el diálogo con otras personas."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 31,
+        "fields": {
+            "dimension": 7,
+            "number": 31,
+            "text": "En mi trabajo percibo un sentimiento de compañerismo y bienestar con mis colegas."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 32,
+        "fields": {
+            "dimension": 7,
+            "number": 32,
+            "text": "En mi trabajo se brinda el apoyo necesario a los trabajadores sustitutos o trabajadores con algún grado de discapacidad y enfermedad."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 33,
+        "fields": {
+            "dimension": 7,
+            "number": 33,
+            "text": "En mi trabajo se me brinda ayuda técnica y administrativa cuando lo requiero."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 34,
+        "fields": {
+            "dimension": 7,
+            "number": 34,
+            "text": "En mi trabajo tengo acceso a la atención de un médico, psicólogo, trabajadora social, consejero, etc. en situaciones de crisis y/o rehabilitación."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 35,
+        "fields": {
+            "dimension": 8,
+            "number": 35,
+            "text": "En mi trabajo me han discriminado por algún motivo (edad, sexo, etnia, discapacidad, orientación sexual, religión, etc.)."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 36,
+        "fields": {
+            "dimension": 11,
+            "number": 36,
+            "text": "Aunque quisiera no puedo dejar de pensar en el trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 37,
+        "fields": {
+            "dimension": 14,
+            "number": 37,
+            "text": "Considero que mi trabajo es estable."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 38,
+        "fields": {
+            "dimension": 8,
+            "number": 38,
+            "text": "En mi trabajo he recibido un trato irrespetuoso o discriminatorio por parte de compañeros o superiores."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 39,
+        "fields": {
+            "dimension": 14,
+            "number": 39,
+            "text": "Creo que mi situación laboral es provisional."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 40,
+        "fields": {
+            "dimension": 12,
+            "number": 40,
+            "text": "Las condiciones de mi trabajo (iluminación, ventilación, temperatura, espacio, etc.) son adecuadas."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 41,
+        "fields": {
+            "dimension": 9,
+            "number": 41,
+            "text": "En mi trabajo he sido víctima de acoso laboral (maltrato, humillación, intimidación)."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 42,
+        "fields": {
+            "dimension": 14,
+            "number": 42,
+            "text": "Siento que mi trabajo está en riesgo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 43,
+        "fields": {
+            "dimension": 10,
+            "number": 43,
+            "text": "En mi trabajo he sido víctima de acoso sexual (insinuaciones, comentarios, contacto físico no deseado)."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 44,
+        "fields": {
+            "dimension": 15,
+            "number": 44,
+            "text": "Considero que mi estado de salud es bueno."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 45,
+        "fields": {
+            "dimension": 11,
+            "number": 45,
+            "text": "Siento que trabajo demasiado."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 46,
+        "fields": {
+            "dimension": 13,
+            "number": 46,
+            "text": "Me resulta difícil cumplir con mis responsabilidades familiares por el trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 47,
+        "fields": {
+            "dimension": 12,
+            "number": 47,
+            "text": "Mi trabajo me expone a riesgos físicos (ruido, vibraciones, productos químicos, etc.)."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 48,
+        "fields": {
+            "dimension": 10,
+            "number": 48,
+            "text": "He presenciado situaciones de acoso sexual en mi trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 49,
+        "fields": {
+            "dimension": 13,
+            "number": 49,
+            "text": "Las exigencias de mi trabajo afectan negativamente mi vida personal y familiar."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 50,
+        "fields": {
+            "dimension": 9,
+            "number": 50,
+            "text": "He presenciado situaciones de acoso laboral en mi trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 51,
+        "fields": {
+            "dimension": 11,
+            "number": 51,
+            "text": "Siento que el trabajo me consume."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 52,
+        "fields": {
+            "dimension": 14,
+            "number": 52,
+            "text": "Me preocupa la posibilidad de perder mi trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 53,
+        "fields": {
+            "dimension": 8,
+            "number": 53,
+            "text": "He presenciado situaciones de discriminación en mi trabajo."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 54,
+        "fields": {
+            "dimension": 14,
+            "number": 54,
+            "text": "Siento que mi futuro laboral es incierto."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 55,
+        "fields": {
+            "dimension": 11,
+            "number": 55,
+            "text": "Me siento culpable cuando no estoy trabajando."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 56,
+        "fields": {
+            "dimension": 8,
+            "number": 56,
+            "text": "En mi trabajo se han dado situaciones de exclusión o marginación."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 57,
+        "fields": {
+            "dimension": 11,
+            "number": 57,
+            "text": "Trabajo incluso en mis días libres."
+        }
+    },
+    {
+        "model": "infrastructure.question",
+        "pk": 58,
+        "fields": {
+            "dimension": 15,
+            "number": 58,
+            "text": "Mi trabajo afecta negativamente mi salud física y mental."
+        }
+    }
+]

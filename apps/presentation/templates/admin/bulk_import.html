@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+
+{% block title %}Importación Masiva{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Botón Volver Atrás -->
+    <div class="mb-4">
+        <a href="{% url 'admin_dashboard' %}" class="inline-flex items-center text-slate-600 hover:text-slate-900 transition">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver al Dashboard
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <h1 class="text-3xl font-bold text-slate-800 mb-6">Importación Masiva de Datos</h1>
+
+        <!-- Botón para descargar plantilla -->
+        <div class="mb-6 flex justify-end">
+            <a href="{% url 'download_import_template' %}?type=employees" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow-sm">
+                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Descargar Plantilla Excel
+            </a>
+        </div>
+
+        <!-- Instrucciones detalladas -->
+        <div class="bg-blue-50 border-l-4 border-blue-800 p-6 mb-6 rounded-lg">
+            <h3 class="text-lg font-semibold text-blue-900 mb-4">📋 Instrucciones para Importar Empleados</h3>
+            
+            <div class="space-y-4 text-sm text-blue-800">
+                <div>
+                    <h4 class="font-semibold mb-2">1. Descargar la Plantilla</h4>
+                    <p class="ml-4">Haz clic en el botón "Descargar Plantilla Excel" arriba. La plantilla incluye:</p>
+                    <ul class="ml-8 mt-2 list-disc space-y-1">
+                        <li>Encabezados en la primera fila (azul)</li>
+                        <li>Una fila de ejemplo (gris claro) que puedes eliminar</li>
+                        <li>Formato y validaciones necesarias</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-2">2. Completar los Datos</h4>
+                    <p class="ml-4">Llena la plantilla con los datos de los empleados siguiendo estas reglas:</p>
+                    <div class="ml-8 mt-2 bg-white p-4 rounded border border-blue-200">
+                        <table class="w-full text-xs">
+                            <thead class="bg-blue-100">
+                                <tr>
+                                    <th class="px-2 py-1 text-left border">Columna</th>
+                                    <th class="px-2 py-1 text-left border">Descripción</th>
+                                    <th class="px-2 py-1 text-left border">Valores Permitidos</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-xs">
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Nombres</td>
+                                    <td class="px-2 py-1 border">Nombre del empleado</td>
+                                    <td class="px-2 py-1 border">Texto libre</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Apellidos</td>
+                                    <td class="px-2 py-1 border">Apellidos del empleado</td>
+                                    <td class="px-2 py-1 border">Texto libre</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Cédula</td>
+                                    <td class="px-2 py-1 border">Número de cédula (único)</td>
+                                    <td class="px-2 py-1 border">10 dígitos</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Fecha Nacimiento</td>
+                                    <td class="px-2 py-1 border">Fecha de nacimiento</td>
+                                    <td class="px-2 py-1 border">YYYY-MM-DD (ej: 1990-01-15)</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Género</td>
+                                    <td class="px-2 py-1 border">Género del empleado</td>
+                                    <td class="px-2 py-1 border"><strong>M</strong> o <strong>F</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Etnia</td>
+                                    <td class="px-2 py-1 border">Auto-identificación étnica</td>
+                                    <td class="px-2 py-1 border"><strong>MESTIZO, INDIGENA, AFROECUATORIANO, BLANCO, MONTUBIO, OTRO</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Área Interna</td>
+                                    <td class="px-2 py-1 border">Nombre interno del área en la empresa</td>
+                                    <td class="px-2 py-1 border">Texto libre</td>
+                                </tr>
+                                <tr class="bg-yellow-50">
+                                    <td class="px-2 py-1 border font-medium">Área ERP</td>
+                                    <td class="px-2 py-1 border">Clasificación MDT para comparaciones (⚠️ IMPORTANTE)</td>
+                                    <td class="px-2 py-1 border"><strong>ADMINISTRATIVA, OPERATIVA, COMERCIAL, LOGISTICA, PRODUCCION, TRANSFORMACION, SOPORTE, TECNOLOGIA_INNOVACION</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Cargo</td>
+                                    <td class="px-2 py-1 border">Posición del empleado</td>
+                                    <td class="px-2 py-1 border">Texto libre</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Educación</td>
+                                    <td class="px-2 py-1 border">Nivel educativo</td>
+                                    <td class="px-2 py-1 border"><strong>PRIMARIA, SECUNDARIA, TECNICO, UNIVERSITARIO, POSTGRADO</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Años Experiencia</td>
+                                    <td class="px-2 py-1 border">Años en la empresa</td>
+                                    <td class="px-2 py-1 border">Número entero</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">RUC Empresa</td>
+                                    <td class="px-2 py-1 border">RUC de la empresa (debe existir)</td>
+                                    <td class="px-2 py-1 border">13 dígitos</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Nombre Empresa</td>
+                                    <td class="px-2 py-1 border">Nombre de la empresa (alternativo al RUC)</td>
+                                    <td class="px-2 py-1 border">Texto libre</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Email Empleado</td>
+                                    <td class="px-2 py-1 border">Email para crear usuario (opcional)</td>
+                                    <td class="px-2 py-1 border">Email válido. Si se omite, se genera automáticamente</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-2 py-1 border font-medium">Contraseña</td>
+                                    <td class="px-2 py-1 border">Contraseña para el usuario (opcional)</td>
+                                    <td class="px-2 py-1 border">Texto libre. Si se omite, se genera automáticamente una contraseña segura</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-2">3. Importantes a Considerar</h4>
+                    <ul class="ml-8 list-disc space-y-1">
+                        <li><strong>La primera fila NO debe eliminarse</strong> - contiene los encabezados</li>
+                        <li><strong>Elimina la fila de ejemplo</strong> antes de importar</li>
+                        <li><strong>La empresa debe existir</strong> en el sistema antes de importar empleados</li>
+                        <li><strong>Las cédulas deben ser únicas</strong> - no se pueden duplicar</li>
+                        <li><strong>Los valores de género, etnia y educación</strong> deben escribirse exactamente como se muestra en la tabla</li>
+                        <li><strong>Si el email no se proporciona</strong>, se generará automáticamente</li>
+                        <li><strong>Las contraseñas:</strong> Si proporcionas una contraseña en el Excel, se usará esa. Si dejas la celda vacía, se generará automáticamente una contraseña segura</li>
+                        <li><strong>Si el usuario ya existe</strong> y proporcionas una contraseña, se actualizará la contraseña del usuario existente</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-2">4. Subir el Archivo</h4>
+                    <ul class="ml-8 list-disc space-y-1">
+                        <li>Selecciona el tipo de importación: <strong>Empleados</strong></li>
+                        <li>Haz clic en "Elegir archivo" y selecciona tu archivo Excel completado</li>
+                        <li>Haz clic en "Importar Datos"</li>
+                        <li>Espera el mensaje de confirmación con el número de registros importados</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.import_type.label }} *</label>
+                {{ form.import_type }}
+                {% if form.import_type.errors %}
+                <p class="text-red-600 text-sm mt-1">{{ form.import_type.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.excel_file.label }} *</label>
+                {{ form.excel_file }}
+                {% if form.excel_file.help_text %}
+                <p class="text-gray-500 text-xs mt-1">{{ form.excel_file.help_text }}</p>
+                {% endif %}
+                {% if form.excel_file.errors %}
+                <p class="text-red-600 text-sm mt-1">{{ form.excel_file.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Información sobre formatos -->
+            <div class="bg-gray-50 rounded-lg p-6 space-y-4">
+                <h3 class="font-semibold text-slate-800 mb-4">📚 Tipos de Importación Disponibles:</h3>
+                
+                <div class="bg-white p-4 rounded border border-gray-200">
+                    <h4 class="font-medium text-gray-700 mb-2">📊 Empresas:</h4>
+                    <p class="text-sm text-slate-600 mb-2">Columnas requeridas: Nombre, RUC, Dirección, Teléfono, Email, Ciudad, Provincia, Email Admin</p>
+                    <a href="{% url 'download_import_template' %}?type=companies" class="text-sm text-blue-600 hover:text-blue-800 font-medium">📥 Descargar plantilla para empresas →</a>
+                </div>
+                
+                <div class="bg-white p-4 rounded border border-gray-200">
+                    <h4 class="font-medium text-gray-700 mb-2">👥 Empleados:</h4>
+                    <p class="text-sm text-slate-600 mb-2">Columnas requeridas: Nombres, Apellidos, Cédula, Fecha Nacimiento, Género, Etnia, Área Interna, <strong class="text-yellow-600">Área ERP (Clasificación MDT)</strong>, Cargo, Educación, Fecha Ingreso, RUC Empresa, Nombre Empresa, Email, Contraseña (opcional)</p>
+                    <a href="{% url 'download_import_template' %}?type=employees" class="text-sm text-blue-600 hover:text-blue-800 font-medium">📥 Descargar plantilla para empleados →</a>
+                </div>
+                
+                <div class="bg-white p-4 rounded border border-gray-200">
+                    <h4 class="font-medium text-gray-700 mb-2">📝 Evaluaciones Históricas:</h4>
+                    <p class="text-sm text-slate-600 mb-2">Columnas requeridas: Cédula Empleado, Año, Fecha Completada, Respuestas (58 columnas para las 58 preguntas, valores 1-4)</p>
+                    <a href="{% url 'download_import_template' %}?type=evaluations" class="text-sm text-blue-600 hover:text-blue-800 font-medium">📥 Descargar plantilla para evaluaciones →</a>
+                </div>
+            </div>
+            
+            <!-- Advertencias -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-yellow-800">⚠️ Advertencias Importantes</h3>
+                        <div class="mt-2 text-sm text-yellow-700">
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>El archivo debe estar en formato <strong>.xlsx</strong> (Excel 2007 o superior)</li>
+                                <li>No modifiques los nombres de las columnas en la primera fila</li>
+                                <li>Los datos deben comenzar desde la segunda fila</li>
+                                <li>Verifica que todos los valores requeridos estén completos antes de importar</li>
+                                <li>Las empresas deben existir antes de importar sus empleados</li>
+                                <li>Los empleados deben existir antes de importar sus evaluaciones</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'admin_dashboard' %}" class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold transition">
+                    Cancelar
+                </a>
+                <button type="submit" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition">
+                    Importar Datos
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

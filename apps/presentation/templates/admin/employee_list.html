@@ -1,0 +1,588 @@
+{% extends 'base.html' %}
+
+{% block title %}Listado de Empleados{% endblock %}
+
+{% block content %}
+<div class="space-y-4 sm:space-y-6">
+    <!-- Botón Volver Atrás -->
+    <div class="mb-2 sm:mb-4">
+        <a href="{% if company %}{% url 'company_list' %}{% else %}{% url 'admin_dashboard' %}{% endif %}" class="inline-flex items-center text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span class="hidden sm:inline">Volver {% if company %}a Empresas{% else %}al Dashboard{% endif %}</span>
+            <span class="sm:hidden">Volver</span>
+        </a>
+    </div>
+    
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div class="flex-1 min-w-0">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">Empleados</h1>
+            {% if company %}
+            <p class="mt-1 text-xs sm:text-sm text-slate-600 truncate">Listado de empleados de {{ company.name }}</p>
+            {% else %}
+            <p class="mt-1 text-xs sm:text-sm text-slate-600">Listado de todos los empleados gestionados</p>
+            {% endif %}
+            <p class="mt-1 text-xs sm:text-sm text-slate-700">Total: <strong>{{ total_count }}</strong> empleado(s)</p>
+        </div>
+        <div class="flex flex-wrap gap-2 sm:space-x-3 sm:flex-nowrap">
+            <a href="{% url 'create_employee' %}" class="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent rounded-md shadow-md text-xs sm:text-sm font-medium text-white bg-blue-800 hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+                <svg class="-ml-1 mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span class="hidden sm:inline">Nuevo Empleado</span>
+                <span class="sm:hidden">Nuevo</span>
+            </a>
+            <div class="relative">
+                <button id="exportBtn" class="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-300 rounded-md shadow-sm text-xs sm:text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+                    <svg class="-ml-1 mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span class="hidden sm:inline">Exportar</span>
+                    <span class="sm:hidden">Exp.</span>
+                </button>
+                <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-slate-200">
+                    <a href="{% if company %}{% url 'employee_export_by_company' company.id %}?format=excel{% else %}{% url 'employee_export' %}?format=excel{% endif %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Exportar a Excel</a>
+                    <a href="{% if company %}{% url 'employee_export_by_company' company.id %}?format=csv{% else %}{% url 'employee_export' %}?format=csv{% endif %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Exportar a CSV</a>
+                </div>
+            </div>
+            <div class="relative">
+                <button id="importBtn" class="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-300 rounded-md shadow-sm text-xs sm:text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+                    <svg class="-ml-1 mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span class="hidden sm:inline">Importar</span>
+                    <span class="sm:hidden">Imp.</span>
+                </button>
+                <div id="importMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border border-slate-200">
+                    <a href="{% url 'download_import_template' %}?type=employees" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100 border-b border-slate-200">
+                        <div class="font-medium">📥 Descargar Plantilla</div>
+                        <div class="text-xs text-slate-500 mt-1">Plantilla Excel para empleados</div>
+                    </a>
+                    <a href="{% url 'bulk_import' %}" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100">
+                        <div class="font-medium">📤 Subir Archivo</div>
+                        <div class="text-xs text-slate-500 mt-1">Importar datos desde Excel</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y Búsqueda -->
+    <div class="bg-white shadow-md rounded-lg p-3 sm:p-4 border border-slate-200">
+        <form method="get" id="filterForm" class="space-y-3 sm:space-y-4">
+            {% if company %}<input type="hidden" name="company_id" value="{{ company.id }}">{% endif %}
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                <!-- Búsqueda -->
+                <div class="sm:col-span-2 md:col-span-2">
+                    <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Búsqueda</label>
+                    <input type="text" name="search" value="{{ search_query }}" placeholder="Buscar por nombre, cédula, email..." class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                </div>
+                
+                <!-- Filtro Estado -->
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Estado</label>
+                    <select name="status" id="status_select" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Todos</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Activo</option>
+                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactivo</option>
+                    </select>
+                </div>
+                
+                <!-- Filtro Empresa (solo si no hay company_id) -->
+                {% if not company %}
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Empresa</label>
+                    <select name="company_filter" id="company_filter_select" class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Todas</option>
+                        {% for comp in companies_for_filter %}
+                        <option value="{{ comp.id }}" {% if company_filter|stringformat:"s" == comp.id|stringformat:"s" %}selected{% endif %}>{{ comp.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% else %}
+                <!-- Filtro Área -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Área</label>
+                    <select name="area" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Todas</option>
+                        {% for area_option in areas %}
+                        <option value="{{ area_option }}" {% if area_filter == area_option %}selected{% endif %}>{{ area_option }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="flex justify-between items-center">
+                <div class="flex space-x-2">
+                    <button type="submit" id="filterSubmitBtn" class="px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Filtrar
+                    </button>
+                    <a href="{% if company %}{% url 'employee_list_by_company' company.id %}{% else %}{% url 'employee_list' %}{% endif %}" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Limpiar
+                    </a>
+                </div>
+                
+                <!-- Resultados por página -->
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-slate-700">Mostrar:</label>
+                    <select name="per_page" onchange="this.form.submit()" class="px-3 py-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+                        <option value="30" {% if per_page == 30 %}selected{% endif %}>30</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                        <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Acciones masivas -->
+    <div id="bulkActions" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <form method="post" action="{% url 'employee_bulk_delete' %}" id="bulkDeleteForm" onsubmit="return confirm('¿Está seguro de eliminar los empleados seleccionados?');">
+            {% csrf_token %}
+            {% if company %}<input type="hidden" name="company_id" value="{{ company.id }}">{% endif %}
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-yellow-800">
+                    <span id="selectedCount">0</span> empleado(s) seleccionado(s)
+                </span>
+                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    Eliminar Seleccionados
+                </button>
+            </div>
+            <div id="selectedIds"></div>
+        </form>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left">
+                            <input type="checkbox" id="selectAll" class="rounded border-slate-300 text-blue-800 focus:ring-blue-500">
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onclick="sortTable('last_name')">
+                            Empleado
+                            {% if order_by == 'last_name' %}
+                            <span class="ml-1">{% if order_direction == 'asc' %}↑{% else %}↓{% endif %}</span>
+                            {% endif %}
+                        </th>
+                        {% if not company %}
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onclick="sortTable('company')">
+                            Empresa
+                        </th>
+                        {% endif %}
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onclick="sortTable('position')">
+                            Cargo / Área
+                            {% if order_by == 'position' %}
+                            <span class="ml-1">{% if order_direction == 'asc' %}↑{% else %}↓{% endif %}</span>
+                            {% endif %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Estado
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onclick="sortTable('created_at')">
+                            Fecha Creación
+                            {% if order_by == 'created_at' %}
+                            <span class="ml-1">{% if order_direction == 'asc' %}↑{% else %}↓{% endif %}</span>
+                            {% endif %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="employeeTableBody">
+                    {% for employee in employees %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <input type="checkbox" name="selected_employees" value="{{ employee.id }}" class="employee-checkbox rounded border-slate-300 text-blue-800 focus:ring-blue-500">
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <span class="text-blue-800 font-bold text-sm">{{ employee.first_name|slice:":1" }}{{ employee.last_name|slice:":1" }}</span>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ employee.full_name }}
+                                    </div>
+                                    <div class="text-sm text-slate-700">
+                                        {{ employee.identification }}
+                                    </div>
+                                    <div class="text-xs text-gray-600">
+                                        {{ employee.user.email }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        {% if not company %}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ employee.company.name }}</div>
+                        </td>
+                        {% endif %}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ employee.position }}</div>
+                            <div class="text-sm text-slate-500">{{ employee.area }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <select 
+                                class="employee-status-select px-3 py-1.5 text-xs leading-5 font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all shadow-sm hover:shadow-md {% if employee.user.is_active %}bg-green-100 text-green-800 hover:bg-green-200{% else %}bg-red-100 text-red-800 hover:bg-red-200{% endif %}"
+                                data-employee-id="{{ employee.id }}"
+                                data-current-status="{% if employee.user.is_active %}active{% else %}inactive{% endif %}"
+                                title="Haz clic para cambiar el estado">
+                                <option value="active" {% if employee.user.is_active %}selected{% endif %}>Activo</option>
+                                <option value="inactive" {% if not employee.user.is_active %}selected{% endif %}>Inactivo</option>
+                            </select>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                            {{ employee.created_at|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex justify-end space-x-2">
+                                <a href="{% url 'employee_detail' employee.id %}" class="text-blue-600 hover:text-blue-900" title="Ver detalles">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </a>
+                                <a href="{% url 'edit_employee' employee.id %}" class="text-blue-800 hover:text-indigo-900" title="Editar">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </a>
+                                <form method="post" action="{% url 'employee_delete' employee.id %}" class="inline" onsubmit="return confirm('¿Está seguro de eliminar a {{ employee.full_name }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-red-600 hover:text-red-900" title="Eliminar">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if company %}7{% else %}8{% endif %}" class="px-6 py-8 text-center text-slate-500">
+                            No se encontraron empleados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        {% if employees.has_other_pages %}
+        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-slate-200 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+                {% if employees.has_previous %}
+                <a href="?page={{ employees.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if company_filter %}&company_filter={{ company_filter }}{% endif %}{% if area_filter %}&area={{ area_filter }}{% endif %}&per_page={{ per_page }}" class="relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50">
+                    Anterior
+                </a>
+                {% endif %}
+                {% if employees.has_next %}
+                <a href="?page={{ employees.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if company_filter %}&company_filter={{ company_filter }}{% endif %}{% if area_filter %}&area={{ area_filter }}{% endif %}&per_page={{ per_page }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50">
+                    Siguiente
+                </a>
+                {% endif %}
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-slate-700">
+                        Mostrando
+                        <span class="font-medium">{{ employees.start_index }}</span>
+                        a
+                        <span class="font-medium">{{ employees.end_index }}</span>
+                        de
+                        <span class="font-medium">{{ total_count }}</span>
+                        resultados
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        {% if employees.has_previous %}
+                        <a href="?page={{ employees.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if company_filter %}&company_filter={{ company_filter }}{% endif %}{% if area_filter %}&area={{ area_filter }}{% endif %}&per_page={{ per_page }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50">
+                            <span class="sr-only">Anterior</span>
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                        {% endif %}
+                        
+                        {% for num in employees.paginator.page_range %}
+                            {% if employees.number == num %}
+                            <span aria-current="page" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-indigo-50 text-sm font-medium text-blue-800">
+                                {{ num }}
+                            </span>
+                            {% elif num > employees.number|add:'-3' and num < employees.number|add:'3' %}
+                            <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if company_filter %}&company_filter={{ company_filter }}{% endif %}{% if area_filter %}&area={{ area_filter }}{% endif %}&per_page={{ per_page }}" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                {{ num }}
+                            </a>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if employees.has_next %}
+                        <a href="?page={{ employees.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if company_filter %}&company_filter={{ company_filter }}{% endif %}{% if area_filter %}&area={{ area_filter }}{% endif %}&per_page={{ per_page }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50">
+                            <span class="sr-only">Siguiente</span>
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Selección múltiple
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.employee-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const selectedIds = document.getElementById('selectedIds');
+    
+    function updateBulkActions() {
+        const checked = document.querySelectorAll('.employee-checkbox:checked');
+        const count = checked.length;
+        
+        if (count > 0) {
+            bulkActions.classList.remove('hidden');
+            selectedCount.textContent = count;
+            
+            // Actualizar inputs ocultos con IDs seleccionados
+            selectedIds.innerHTML = '';
+            checked.forEach(function(checkbox) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selected_employees';
+                input.value = checkbox.value;
+                selectedIds.appendChild(input);
+            });
+        } else {
+            bulkActions.classList.add('hidden');
+        }
+        
+        // Actualizar estado de "Seleccionar todos"
+        selectAll.checked = count === checkboxes.length && count > 0;
+        selectAll.indeterminate = count > 0 && count < checkboxes.length;
+    }
+    
+    selectAll.addEventListener('change', function() {
+        checkboxes.forEach(function(checkbox) {
+            checkbox.checked = selectAll.checked;
+        });
+        updateBulkActions();
+    });
+    
+    checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+    
+    // Menú de exportación
+    const exportBtn = document.getElementById('exportBtn');
+    const exportMenu = document.getElementById('exportMenu');
+    
+    if (exportBtn && exportMenu) {
+        exportBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            exportMenu.classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', function() {
+            exportMenu.classList.add('hidden');
+        });
+    }
+    
+    // Menú de importación
+    const importBtn = document.getElementById('importBtn');
+    const importMenu = document.getElementById('importMenu');
+    
+    if (importBtn && importMenu) {
+        importBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            importMenu.classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', function() {
+            importMenu.classList.add('hidden');
+        });
+    }
+    
+    // Auto-submit cuando cambian los filtros de estado o empresa
+    const statusSelect = document.getElementById('status_select');
+    const companyFilterSelect = document.getElementById('company_filter_select');
+    const filterForm = document.getElementById('filterForm');
+    
+    if (statusSelect && filterForm) {
+        statusSelect.addEventListener('change', function() {
+            // Preservar otros parámetros de la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('status', this.value);
+            // Si se selecciona "Todos", eliminar el parámetro
+            if (this.value === '') {
+                urlParams.delete('status');
+            }
+            // Redirigir con los nuevos parámetros
+            window.location.search = urlParams.toString();
+        });
+    }
+    
+    if (companyFilterSelect && filterForm) {
+        companyFilterSelect.addEventListener('change', function() {
+            // Preservar otros parámetros de la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('company_filter', this.value);
+            // Si se selecciona "Todas", eliminar el parámetro
+            if (this.value === '') {
+                urlParams.delete('company_filter');
+            }
+            // Redirigir con los nuevos parámetros
+            window.location.search = urlParams.toString();
+        });
+    }
+    
+    // Asegurar que el formulario preserve todos los valores al enviarse
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            // Los valores ya están en los campos del formulario, no necesitamos hacer nada especial
+            // Solo asegurarnos de que se envíen correctamente
+        });
+    }
+    
+    // Edición inline del estado del empleado
+    const statusSelects = document.querySelectorAll('.employee-status-select');
+    statusSelects.forEach(function(select) {
+        select.addEventListener('change', function() {
+            const employeeId = this.getAttribute('data-employee-id');
+            const newStatus = this.value;
+            const currentStatus = this.getAttribute('data-current-status');
+            const originalValue = currentStatus;
+            
+            // Si no cambió, no hacer nada
+            if (newStatus === currentStatus) {
+                return;
+            }
+            
+            // Deshabilitar el select mientras se procesa
+            this.disabled = true;
+            this.style.opacity = '0.6';
+            
+            // Obtener token CSRF
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            const csrfToken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+            
+            // Crear FormData para enviar
+            const formData = new FormData();
+            formData.append('status', newStatus);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            
+            // Hacer petición AJAX
+            fetch(`/admin/employees/${employeeId}/toggle-status/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar el select visualmente
+                    this.setAttribute('data-current-status', newStatus);
+                    
+                    // Cambiar colores según el estado
+                    if (data.is_active) {
+                        this.className = 'employee-status-select px-3 py-1.5 text-xs leading-5 font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all shadow-sm hover:shadow-md bg-green-100 text-green-800 hover:bg-green-200';
+                    } else {
+                        this.className = 'employee-status-select px-3 py-1.5 text-xs leading-5 font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all shadow-sm hover:shadow-md bg-red-100 text-red-800 hover:bg-red-200';
+                    }
+                    
+                    // Mostrar notificación de éxito
+                    showNotification('Estado actualizado exitosamente', 'success');
+                } else {
+                    // Revertir al valor original
+                    this.value = originalValue;
+                    showNotification('Error al actualizar el estado: ' + (data.error || 'Error desconocido'), 'error');
+                }
+            })
+            .catch(error => {
+                // Revertir al valor original
+                this.value = originalValue;
+                showNotification('Error de conexión al actualizar el estado', 'error');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Rehabilitar el select
+                this.disabled = false;
+                this.style.opacity = '1';
+            });
+        });
+    });
+    
+    // Función para mostrar notificaciones
+    function showNotification(message, type) {
+        // Crear elemento de notificación
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all ${
+            type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        // Remover después de 3 segundos
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
+    }
+});
+
+// Ordenamiento
+function sortTable(field) {
+    const url = new URL(window.location.href);
+    const currentOrder = url.searchParams.get('order_by') || 'last_name';
+    const currentDirection = url.searchParams.get('order_direction') || 'asc';
+    
+    if (currentOrder === field) {
+        url.searchParams.set('order_direction', currentDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+        url.searchParams.set('order_by', field);
+        url.searchParams.set('order_direction', 'asc');
+    }
+    
+    window.location.href = url.toString();
+}
+</script>
+{% endblock %}

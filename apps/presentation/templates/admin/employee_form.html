@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Botón Volver Atrás -->
+    <div class="mb-4">
+        <a href="{% url 'employee_list' %}" class="inline-flex items-center text-slate-600 hover:text-slate-900 transition">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver a Empleados
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <h1 class="text-3xl font-bold text-slate-800 mb-6">{{ title }}</h1>
+
+        <!-- Datos para JavaScript -->
+        <div id="ciudades-data" data-ciudades='{{ ciudades_por_provincia|safe }}' style="display: none;"></div>
+
+        <form method="post" id="employeeForm">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Información Personal -->
+                <div class="md:col-span-2">
+                    <h2 class="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Información Personal</h2>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.company.label }} *</label>
+                    {{ form.company }}
+                    {% if form.company.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.company.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.identification.label }} *</label>
+                    {{ form.identification }}
+                    {% if form.identification.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.identification.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.first_name.label }} *</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.last_name.label }} *</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.date_of_birth.label }} *</label>
+                    {{ form.date_of_birth }}
+                    {% if form.date_of_birth.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.date_of_birth.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.gender.label }} *</label>
+                    {{ form.gender }}
+                    {% if form.gender.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.gender.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.ethnicity.label }} *</label>
+                    {{ form.ethnicity }}
+                    {% if form.ethnicity.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.ethnicity.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Información Laboral -->
+                <div class="md:col-span-2 mt-6">
+                    <h2 class="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Información Laboral</h2>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.area.label }} *</label>
+                    {{ form.area }}
+                    {% if form.area.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.area.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-xs text-gray-500 mt-1">Nombre interno del área en la empresa</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.work_area_erp.label }} *</label>
+                    {{ form.work_area_erp }}
+                    {% if form.work_area_erp.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.work_area_erp.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-xs text-blue-600 mt-1">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Seleccione el área más cercana según clasificación MDT (para comparaciones en cumplimiento)
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.position.label }} *</label>
+                    {{ form.position }}
+                    {% if form.position.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.position.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.education_level.label }} *</label>
+                    {{ form.education_level }}
+                    {% if form.education_level.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.education_level.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.hire_date.label }} *</label>
+                    {{ form.hire_date }}
+                    {% if form.hire_date.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.hire_date.errors.0 }}</p>
+                    {% endif %}
+                    <p class="text-xs text-gray-500 mt-1">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        La antigüedad se calculará automáticamente desde esta fecha
+                    </p>
+                </div>
+                
+                {% if employee %}
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Antigüedad Calculada</label>
+                    <div class="w-full px-4 py-2 border border-slate-300 rounded-lg bg-gray-50 text-slate-700 font-semibold">
+                        {{ employee.years_of_experience }} años
+                        <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                            {{ employee.get_experience_range_display }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Calculado automáticamente
+                    </p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.province.label }} *</label>
+                    <select name="{{ form.province.name }}" id="{{ form.province.id_for_label }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                        {% for value, label in form.province.field.choices %}
+                        <option value="{{ value }}" {% if form.province.value == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.province.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.province.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.city.label }} *</label>
+                    <select name="{{ form.city.name }}" id="{{ form.city.id_for_label }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                        {% for value, label in form.city.field.choices %}
+                        <option value="{{ value }}" {% if form.city.value == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.city.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.city.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Información de Usuario -->
+                <div class="md:col-span-2 mt-6">
+                    <h2 class="text-xl font-semibold text-slate-700 mb-4 border-b pb-2">Información de Usuario</h2>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.user_email.label }} *</label>
+                    {{ form.user_email }}
+                    {% if form.user_email.help_text %}
+                    <p class="text-gray-500 text-xs mt-1">{{ form.user_email.help_text }}</p>
+                    {% endif %}
+                    {% if form.user_email.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.user_email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">{{ form.user_password.label }}</label>
+                    <div class="relative">
+                        {{ form.user_password }}
+                        <button type="button" id="togglePasswordEmployee" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-slate-700 focus:outline-none">
+                            <svg id="eyeIconEmployee" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <svg id="eyeOffIconEmployee" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    {% if form.user_password.help_text %}
+                    <p class="text-gray-500 text-xs mt-1">{{ form.user_password.help_text }}</p>
+                    {% endif %}
+                    {% if form.user_password.errors %}
+                    <p class="text-red-600 text-sm mt-1">{{ form.user_password.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                {% if employee and employee.user and employee.user.stored_password %}
+                {% if user.is_superuser or user.role == 'SUPERUSER' %}
+                {% if employee_password_decrypted %}
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Contraseña Actual del Empleado</label>
+                    <div class="flex items-center gap-2">
+                        <input type="password" id="currentEmployeePassword" value="{{ employee_password_decrypted }}" readonly class="flex-1 px-4 py-2 border border-slate-300 rounded-lg bg-gray-50 text-slate-900 font-mono text-sm">
+                        <button type="button" id="toggleCurrentEmployeePassword" class="px-3 py-2 text-gray-500 hover:text-slate-700 focus:outline-none">
+                            <svg id="eyeIconCurrentEmployee" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <svg id="eyeOffIconCurrentEmployee" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="text-gray-500 text-xs mt-1">Contraseña almacenada del empleado actual (solo visible para superusuarios)</p>
+                </div>
+                {% else %}
+                <div class="md:col-span-2 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p class="text-sm text-yellow-800">⚠️ La contraseña está encriptada pero no se pudo desencriptar. Puede ser que la clave de encriptación haya cambiado.</p>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="md:col-span-2 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p class="text-sm text-yellow-800">⚠️ La contraseña está encriptada. Solo los superusuarios pueden verla.</p>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="mt-8 flex justify-end space-x-4">
+                <a href="{% url 'employee_list' %}" class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-semibold transition">
+                    Cancelar
+                </a>
+                <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition">
+                    Guardar Empleado
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Actualizar ciudades cuando se selecciona una provincia
+document.addEventListener('DOMContentLoaded', function() {
+    // Obtener datos de ciudades desde el data attribute
+    const ciudadesDataElement = document.getElementById('ciudades-data');
+    let ciudadesPorProvincia = {};
+    
+    if (ciudadesDataElement) {
+        try {
+            const ciudadesJson = ciudadesDataElement.getAttribute('data-ciudades');
+            ciudadesPorProvincia = JSON.parse(ciudadesJson);
+        } catch (e) {
+            console.error('Error parsing ciudades_por_provincia:', e);
+        }
+    }
+    
+    const provinceSelect = document.getElementById('id_province');
+    const citySelect = document.getElementById('id_city');
+    
+    if (provinceSelect && citySelect) {
+        provinceSelect.addEventListener('change', function() {
+            const provincia = this.value;
+            
+            // Limpiar opciones
+            citySelect.innerHTML = '<option value="">Seleccione una ciudad</option>';
+            
+            // Obtener ciudades de la provincia seleccionada
+            const ciudades = ciudadesPorProvincia[provincia] || [];
+            
+            ciudades.forEach(function(ciudad) {
+                const option = document.createElement('option');
+                option.value = ciudad;
+                option.textContent = ciudad;
+                citySelect.appendChild(option);
+            });
+        });
+    }
+    
+    // Toggle password visibility
+    const togglePassword = document.getElementById('togglePasswordEmployee');
+    const passwordInput = document.getElementById('id_user_password');
+    const eyeIcon = document.getElementById('eyeIconEmployee');
+    const eyeOffIcon = document.getElementById('eyeOffIconEmployee');
+    
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'password') {
+                eyeIcon.classList.remove('hidden');
+                eyeOffIcon.classList.add('hidden');
+            } else {
+                eyeIcon.classList.add('hidden');
+                eyeOffIcon.classList.remove('hidden');
+            }
+        });
+    }
+    
+    // Toggle current employee password visibility
+    const toggleCurrentPassword = document.getElementById('toggleCurrentEmployeePassword');
+    const currentPasswordInput = document.getElementById('currentEmployeePassword');
+    const eyeIconCurrent = document.getElementById('eyeIconCurrentEmployee');
+    const eyeOffIconCurrent = document.getElementById('eyeOffIconCurrentEmployee');
+    
+    if (toggleCurrentPassword && currentPasswordInput) {
+        toggleCurrentPassword.addEventListener('click', function() {
+            const type = currentPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            currentPasswordInput.setAttribute('type', type);
+            
+            if (type === 'password') {
+                eyeIconCurrent.classList.remove('hidden');
+                eyeOffIconCurrent.classList.add('hidden');
+            } else {
+                eyeIconCurrent.classList.add('hidden');
+                eyeOffIconCurrent.classList.remove('hidden');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+

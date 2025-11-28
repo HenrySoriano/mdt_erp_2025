@@ -1,0 +1,227 @@
+[
+    {
+        "model": "infrastructure.dimension",
+        "pk": 1,
+        "fields": {
+            "name": "Carga y ritmo de trabajo",
+            "description": "Evalúa las demandas de trabajo y el ritmo al que se deben realizar las actividades",
+            "order": 1,
+            "low_risk_min": 13,
+            "low_risk_max": 16,
+            "medium_risk_min": 8,
+            "medium_risk_max": 12,
+            "high_risk_min": 4,
+            "high_risk_max": 7
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 2,
+        "fields": {
+            "name": "Desarrollo de competencias",
+            "description": "Evalúa las oportunidades de aprendizaje y desarrollo profesional",
+            "order": 2,
+            "low_risk_min": 13,
+            "low_risk_max": 16,
+            "medium_risk_min": 8,
+            "medium_risk_max": 12,
+            "high_risk_min": 4,
+            "high_risk_max": 7
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 3,
+        "fields": {
+            "name": "Liderazgo",
+            "description": "Evalúa la calidad del liderazgo y apoyo de los superiores",
+            "order": 3,
+            "low_risk_min": 18,
+            "low_risk_max": 24,
+            "medium_risk_min": 12,
+            "medium_risk_max": 17,
+            "high_risk_min": 6,
+            "high_risk_max": 11
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 4,
+        "fields": {
+            "name": "Margen de acción y control",
+            "description": "Evalúa el grado de autonomía y control sobre el trabajo",
+            "order": 4,
+            "low_risk_min": 13,
+            "low_risk_max": 16,
+            "medium_risk_min": 8,
+            "medium_risk_max": 12,
+            "high_risk_min": 4,
+            "high_risk_max": 7
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 5,
+        "fields": {
+            "name": "Organización del trabajo",
+            "description": "Evalúa la claridad de objetivos y organización del trabajo",
+            "order": 5,
+            "low_risk_min": 18,
+            "low_risk_max": 24,
+            "medium_risk_min": 12,
+            "medium_risk_max": 17,
+            "high_risk_min": 6,
+            "high_risk_max": 11
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 6,
+        "fields": {
+            "name": "Recuperación",
+            "description": "Evalúa las oportunidades de descanso y recuperación",
+            "order": 6,
+            "low_risk_min": 16,
+            "low_risk_max": 20,
+            "medium_risk_min": 10,
+            "medium_risk_max": 15,
+            "high_risk_min": 5,
+            "high_risk_max": 9
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 7,
+        "fields": {
+            "name": "Soporte y apoyo",
+            "description": "Evalúa el apoyo social y técnico en el trabajo",
+            "order": 7,
+            "low_risk_min": 16,
+            "low_risk_max": 20,
+            "medium_risk_min": 10,
+            "medium_risk_max": 15,
+            "high_risk_min": 5,
+            "high_risk_max": 9
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 8,
+        "fields": {
+            "name": "Acoso discriminatorio",
+            "description": "Evalúa la presencia de discriminación en el trabajo",
+            "order": 8,
+            "low_risk_min": 13,
+            "low_risk_max": 16,
+            "medium_risk_min": 8,
+            "medium_risk_max": 12,
+            "high_risk_min": 4,
+            "high_risk_max": 7
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 9,
+        "fields": {
+            "name": "Acoso laboral",
+            "description": "Evalúa la presencia de acoso laboral",
+            "order": 9,
+            "low_risk_min": 7,
+            "low_risk_max": 8,
+            "medium_risk_min": 5,
+            "medium_risk_max": 6,
+            "high_risk_min": 2,
+            "high_risk_max": 4
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 10,
+        "fields": {
+            "name": "Acoso sexual",
+            "description": "Evalúa la presencia de acoso sexual",
+            "order": 10,
+            "low_risk_min": 7,
+            "low_risk_max": 8,
+            "medium_risk_min": 5,
+            "medium_risk_max": 6,
+            "high_risk_min": 2,
+            "high_risk_max": 4
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 11,
+        "fields": {
+            "name": "Adicción al trabajo",
+            "description": "Evalúa la tendencia a trabajar excesivamente",
+            "order": 11,
+            "low_risk_min": 16,
+            "low_risk_max": 20,
+            "medium_risk_min": 10,
+            "medium_risk_max": 15,
+            "high_risk_min": 5,
+            "high_risk_max": 9
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 12,
+        "fields": {
+            "name": "Condiciones del trabajo",
+            "description": "Evalúa las condiciones físicas del entorno laboral",
+            "order": 12,
+            "low_risk_min": 7,
+            "low_risk_max": 8,
+            "medium_risk_min": 5,
+            "medium_risk_max": 6,
+            "high_risk_min": 2,
+            "high_risk_max": 4
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 13,
+        "fields": {
+            "name": "Doble presencia (laboral-familiar)",
+            "description": "Evalúa el equilibrio entre trabajo y vida familiar",
+            "order": 13,
+            "low_risk_min": 7,
+            "low_risk_max": 8,
+            "medium_risk_min": 5,
+            "medium_risk_max": 6,
+            "high_risk_min": 2,
+            "high_risk_max": 4
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 14,
+        "fields": {
+            "name": "Estabilidad laboral percibida",
+            "description": "Evalúa la percepción de seguridad en el empleo",
+            "order": 14,
+            "low_risk_min": 16,
+            "low_risk_max": 20,
+            "medium_risk_min": 10,
+            "medium_risk_max": 15,
+            "high_risk_min": 5,
+            "high_risk_max": 9
+        }
+    },
+    {
+        "model": "infrastructure.dimension",
+        "pk": 15,
+        "fields": {
+            "name": "Salud auto percibida",
+            "description": "Evalúa la percepción del estado de salud",
+            "order": 15,
+            "low_risk_min": 7,
+            "low_risk_max": 8,
+            "medium_risk_min": 5,
+            "medium_risk_max": 6,
+            "high_risk_min": 2,
+            "high_risk_max": 4
+        }
+    }
+]

@@ -1,0 +1,880 @@
+{% load dict_filters %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista Previa PowerPoint - {{ company.name|default:"Resultados Globales" }}</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    
+    <style>
+        body {
+            background: #f3f4f6;
+            padding: 0;
+            margin: 0;
+        }
+        .slide {
+            max-width: 1400px;
+            min-height: 600px;
+            background: white;
+            margin: 20px auto;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border-radius: 8px;
+        }
+        .slide-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #1e3a8a;
+            margin-bottom: 15px;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        .slide-subtitle {
+            font-size: 1.25rem;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+        canvas {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+        .download-button-fixed {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        @media (max-width: 1024px) {
+            .slide {
+                padding: 30px;
+                margin: 15px;
+            }
+            .slide-title {
+                font-size: 2rem;
+            }
+        }
+        @media (max-width: 768px) {
+            .slide {
+                padding: 20px;
+                margin: 10px;
+            }
+            .slide-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Botón Flotante de Descarga (con barra de progreso profesional) -->
+<a href="{% if company %}{% url 'pptx_progress_by_company' company.id %}?year={{ year }}{% else %}{% url 'pptx_progress' %}?year={{ year }}{% endif %}"
+   class="download-button-fixed inline-flex items-center px-6 py-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-full text-lg shadow-2xl transition-all transform hover:scale-110 hover:shadow-orange-500/50">
+    <svg class="w-6 h-6 mr-2 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+    </svg>
+    📥 Descargar PowerPoint
+</a>
+
+<!-- Banner Superior Informativo -->
+<div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-3xl font-bold">Vista Previa del Informe PowerPoint</h1>
+                <p class="text-purple-100 mt-2">{{ company.name|default:"Resultados Globales" }} - Año {{ year }}</p>
+            </div>
+            <div class="text-right">
+                <div class="text-4xl font-bold">{{ total_evaluations_count }}</div>
+                <div class="text-purple-200">Evaluaciones</div>
+            </div>
+        </div>
+        <div class="mt-4 bg-white/20 rounded-lg p-4">
+            <p class="text-sm">
+                ℹ️ Esta es una vista previa de cómo se verá cada diapositiva del PowerPoint. 
+                Los gráficos son idénticos a los de la página web. Desplázate hacia abajo para ver todas las diapositivas.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 1: PORTADA ==================== -->
+<div id="slide-portada" class="slide bg-gradient-to-br from-blue-600 to-indigo-800 flex flex-col justify-center items-center text-center min-h-[500px]">
+    <h1 class="text-6xl md:text-7xl font-bold text-white mb-8">Informe de Evaluación de<br>Riesgo Psicosocial</h1>
+    <div class="text-3xl md:text-4xl text-blue-100 font-semibold mb-12">
+        {{ company.name|default:"Resultados Globales" }}
+    </div>
+    <div class="text-2xl md:text-3xl text-white">Año {{ year }}</div>
+    <div class="mt-12 text-xl md:text-2xl text-blue-200">
+        Total de Evaluaciones: {{ total_evaluations_count }}
+    </div>
+</div>
+
+<!-- ==================== SLIDE 2: RESULTADO GLOBAL ==================== -->
+<div id="slide-resultado-global" class="slide">
+    <h2 class="slide-title">Resultado Global de la Evaluación</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <!-- Información textual -->
+        <div class="space-y-6">
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border-l-4 border-indigo-500">
+                <div class="text-xl font-bold text-gray-700 mb-4">Distribución por Nivel de Riesgo</div>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-lg">🟢 Riesgo Bajo:</span>
+                        <span class="text-2xl font-bold text-green-600">{{ global_score_counts.bajo }} ({{ global_score_percentages.bajo }}%)</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-lg">🟡 Riesgo Medio:</span>
+                        <span class="text-2xl font-bold text-yellow-600">{{ global_score_counts.medio }} ({{ global_score_percentages.medio }}%)</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-lg">🔴 Riesgo Alto:</span>
+                        <span class="text-2xl font-bold text-red-600">{{ global_score_counts.alto }} ({{ global_score_percentages.alto }}%)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-yellow-50 rounded-xl p-6 border-l-4 border-yellow-500">
+                <div class="text-lg font-semibold text-gray-700">📊 Nivel de Riesgo Predominante:</div>
+                <div class="text-4xl font-bold mt-3
+                    {% if overall_risk == 'BAJO' %}text-green-600
+                    {% elif overall_risk == 'MEDIO' %}text-yellow-600
+                    {% else %}text-red-600{% endif %}">
+                    RIESGO {{ overall_risk }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gráfico -->
+        <div class="flex items-center justify-center">
+            <div style="max-width: 400px; width: 100%;">
+                <canvas id="globalRiskChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SLIDE 3: RESULTADOS POR DIMENSIÓN ==================== -->
+<div id="slide-dimensiones" class="slide">
+    <h2 class="slide-title">Resultados por Dimensión</h2>
+    <p class="slide-subtitle">Distribución de riesgo en las 14 dimensiones evaluadas</p>
+    <div style="height: 600px;">
+        <canvas id="adminDimensionsChart"></canvas>
+    </div>
+</div>
+
+{% if demographic_data.gender %}
+<!-- ==================== SLIDE 4: ANÁLISIS POR GÉNERO ==================== -->
+<div id="slide-genero" class="slide">
+    <h2 class="slide-title">Análisis por Género</h2>
+    <p class="slide-subtitle">Comparación de niveles de riesgo entre grupos</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        {% for group in demographic_data.gender %}
+        <div class="bg-gray-50 rounded-lg p-6">
+            <h3 class="text-2xl font-bold text-center mb-4 text-gray-700">{{ group.label }}<br><span class="text-lg text-gray-500">({{ group.count }} personas)</span></h3>
+            <div style="height: 500px;">
+                <canvas id="chart-gender-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if demographic_data.age_range %}
+<!-- ==================== SLIDE 5: ANÁLISIS POR EDAD ==================== -->
+<div id="slide-edad" class="slide">
+    <h2 class="slide-title">Análisis por Rango de Edad</h2>
+    <p class="slide-subtitle">Distribución de riesgo según grupo etario - {{ demographic_data.age_range|length }} grupos</p>
+    <div class="grid grid-cols-1 {% if demographic_data.age_range|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
+        {% for group in demographic_data.age_range %}
+        <div class="bg-purple-50 rounded-lg p-6 border border-purple-200">
+            <h3 class="text-xl font-bold text-purple-900 mb-2">{{ group.label }}</h3>
+            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+            <div style="height: 450px;">
+                <canvas id="chart-age-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if demographic_data.work_area %}
+<!-- ==================== SLIDE 6: ANÁLISIS POR ÁREA DE TRABAJO ==================== -->
+<div id="slide-area" class="slide">
+    <h2 class="slide-title">Análisis por Área de Trabajo</h2>
+    <p class="slide-subtitle">Comparación de riesgo entre departamentos - {{ demographic_data.work_area|length }} áreas</p>
+    <div class="grid grid-cols-1 {% if demographic_data.work_area|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
+        {% for group in demographic_data.work_area %}
+        <div class="bg-blue-50 rounded-lg p-6 border border-blue-200">
+            <h3 class="text-xl font-bold text-blue-900 mb-2">{{ group.label }}</h3>
+            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+            <div style="height: 450px;">
+                <canvas id="chart-area-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if demographic_data.education_level %}
+<!-- ==================== SLIDE 7: ANÁLISIS POR EDUCACIÓN ==================== -->
+<div id="slide-educacion" class="slide">
+    <h2 class="slide-title">Análisis por Nivel de Educación</h2>
+    <p class="slide-subtitle">Distribución de riesgo según formación académica - {{ demographic_data.education_level|length }} niveles</p>
+    <div class="grid grid-cols-1 {% if demographic_data.education_level|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
+        {% for group in demographic_data.education_level %}
+        <div class="bg-amber-50 rounded-lg p-6 border border-amber-200">
+            <h3 class="text-xl font-bold text-amber-900 mb-2">{{ group.label }}</h3>
+            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+            <div style="height: 450px;">
+                <canvas id="chart-education-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if demographic_data.experience_range %}
+<!-- ==================== SLIDE 8: ANÁLISIS POR ANTIGÜEDAD ==================== -->
+<div id="slide-experiencia" class="slide">
+    <h2 class="slide-title">Análisis por Antigüedad</h2>
+    <p class="slide-subtitle">Distribución de riesgo según años de experiencia - {{ demographic_data.experience_range|length }} rangos</p>
+    <div class="grid grid-cols-1 {% if demographic_data.experience_range|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
+        {% for group in demographic_data.experience_range %}
+        <div class="bg-orange-50 rounded-lg p-6 border border-orange-200">
+            <h3 class="text-xl font-bold text-orange-900 mb-2">{{ group.label }}</h3>
+            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+            <div style="height: 450px;">
+                <canvas id="chart-experience-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if demographic_data.ethnicity %}
+<!-- ==================== SLIDE 9: ANÁLISIS POR ETNIA ==================== -->
+<div id="slide-etnia" class="slide">
+    <h2 class="slide-title">Análisis por Etnia</h2>
+    <p class="slide-subtitle">Distribución de riesgo según grupo étnico - {{ demographic_data.ethnicity|length }} grupos</p>
+    <div class="grid grid-cols-1 {% if demographic_data.ethnicity|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
+        {% for group in demographic_data.ethnicity %}
+        <div class="bg-cyan-50 rounded-lg p-6 border border-cyan-200">
+            <h3 class="text-xl font-bold text-cyan-900 mb-2">{{ group.label }}</h3>
+            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+            <div style="height: 450px;">
+                <canvas id="chart-ethnicity-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if demographic_data.province %}
+<!-- ==================== SLIDE 10: ANÁLISIS POR PROVINCIA ==================== -->
+<div id="slide-provincia" class="slide">
+    <h2 class="slide-title">Análisis por Provincia</h2>
+    <p class="slide-subtitle">Distribución de riesgo por ubicación geográfica - {{ demographic_data.province|length }} provincias</p>
+    <div class="grid grid-cols-1 {% if demographic_data.province|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
+        {% for group in demographic_data.province %}
+        <div class="bg-teal-50 rounded-lg p-6 border border-teal-200">
+            <h3 class="text-xl font-bold text-teal-900 mb-2">{{ group.label }}</h3>
+            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+            <div style="height: 450px;">
+                <canvas id="chart-province-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if demographic_data.city %}
+<!-- ==================== SLIDE 11: ANÁLISIS POR CIUDAD ==================== -->
+<div id="slide-ciudad" class="slide">
+    <h2 class="slide-title">Análisis por Ciudad</h2>
+    <p class="slide-subtitle">Comparación de riesgo entre ciudades - {{ demographic_data.city|length }} ciudades</p>
+    <div class="grid grid-cols-1 {% if demographic_data.city|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
+        {% for group in demographic_data.city %}
+        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900 mb-2">{{ group.label }}</h3>
+            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+            <div style="height: 450px;">
+                <canvas id="chart-city-{{ forloop.counter }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ==================== SLIDE 12: RECOMENDACIONES ==================== -->
+<div id="slide-recomendaciones" class="slide">
+    <h2 class="slide-title">Recomendaciones Estratégicas</h2>
+    <div class="bg-blue-50 rounded-xl p-8 border-l-4 border-blue-500">
+        <div class="space-y-4">
+            {% for rec in general_recommendations|slice:":8" %}
+            <div class="flex items-start space-x-3">
+                <span class="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">{{ forloop.counter }}</span>
+                <p class="text-base text-gray-700 leading-relaxed">{{ rec }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Mensaje Final -->
+<div class="max-w-7xl mx-auto my-8 p-6 bg-green-50 border-l-4 border-green-500 rounded-lg">
+    <p class="text-lg text-gray-700">
+        ✅ <strong>Vista previa completa.</strong> Haz clic en el botón flotante naranja para descargar el PowerPoint con todos estos gráficos.
+    </p>
+</div>
+
+<!-- ==================== JAVASCRIPT: GRÁFICOS ==================== -->
+<script>
+console.log('🚀 Iniciando carga de gráficos...');
+console.log('📊 Chart.js disponible:', typeof Chart !== 'undefined');
+console.log('📊 ChartDataLabels disponible:', typeof ChartDataLabels !== 'undefined');
+
+// Registrar plugin de datalabels
+if (typeof ChartDataLabels !== 'undefined') {
+    Chart.register(ChartDataLabels);
+    console.log('✅ ChartDataLabels registrado');
+} else {
+    console.error('❌ ChartDataLabels NO disponible');
+}
+
+// Colores consistentes
+const colors = {
+    bajo: '#10b981',
+    medio: '#eab308',
+    alto: '#ef4444'
+};
+
+// Configuración global de Chart.js para responsive
+Chart.defaults.responsive = true;
+Chart.defaults.maintainAspectRatio = false;
+
+console.log('✅ Configuración inicial completa');
+
+// ==================== GRÁFICO GLOBAL (DONUT) ====================
+console.log('📊 Creando gráfico global...');
+const globalCtx = document.getElementById('globalRiskChart');
+console.log('Canvas global encontrado:', globalCtx !== null);
+if (globalCtx) {
+    console.log('Datos global:', {
+        bajo: parseFloat('{{ global_score_percentages.bajo }}'),
+        medio: parseFloat('{{ global_score_percentages.medio }}'),
+        alto: parseFloat('{{ global_score_percentages.alto }}')
+    });
+    new Chart(globalCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Riesgo Bajo', 'Riesgo Medio', 'Riesgo Alto'],
+            datasets: [{
+                data: [
+                    parseFloat('{{ global_score_percentages.bajo }}') || 0,
+                    parseFloat('{{ global_score_percentages.medio }}') || 0,
+                    parseFloat('{{ global_score_percentages.alto }}') || 0
+                ],
+                backgroundColor: [colors.bajo, colors.medio, colors.alto],
+                borderWidth: 3,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 14, weight: 'bold' },
+                        padding: 15
+                    }
+                },
+                datalabels: {
+                    color: '#ffffff',
+                    font: { size: 18, weight: 'bold' },
+                    formatter: (value) => value > 0 ? value.toFixed(1) + '%' : ''
+                }
+            }
+        }
+    });
+}
+
+// ==================== GRÁFICO DE DIMENSIONES (BARRAS APILADAS) ====================
+console.log('📊 Creando gráfico de dimensiones...');
+const dimensionData = [
+    {% for dim in dimension_stats_list %}
+    {
+        dimension: "{{ dim.dimension_name }}",
+        bajo: parseFloat("{{ dim.bajo_percentage|default:0 }}") || 0,
+        medio: parseFloat("{{ dim.medio_percentage|default:0 }}") || 0,
+        alto: parseFloat("{{ dim.alto_percentage|default:0 }}") || 0,
+        bajoCount: parseInt("{{ dim.bajo_count|default:0 }}") || 0,
+        medioCount: parseInt("{{ dim.medio_count|default:0 }}") || 0,
+        altoCount: parseInt("{{ dim.alto_count|default:0 }}") || 0
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+const dimensionLabels = dimensionData.map(d => d.dimension);
+const bajoData = dimensionData.map(d => d.bajo);
+const medioData = dimensionData.map(d => d.medio);
+const altoData = dimensionData.map(d => d.alto);
+const bajoCounts = dimensionData.map(d => d.bajoCount);
+const medioCounts = dimensionData.map(d => d.medioCount);
+const altoCounts = dimensionData.map(d => d.altoCount);
+
+const dimCtx = document.getElementById('adminDimensionsChart');
+if (dimCtx) {
+    new Chart(dimCtx, {
+        type: 'bar',
+        data: {
+            labels: dimensionLabels,
+            datasets: [
+                {
+                    label: 'Riesgo Bajo',
+                    data: bajoData,
+                    backgroundColor: colors.bajo,
+                    counts: bajoCounts
+                },
+                {
+                    label: 'Riesgo Medio',
+                    data: medioData,
+                    backgroundColor: colors.medio,
+                    counts: medioCounts
+                },
+                {
+                    label: 'Riesgo Alto',
+                    data: altoData,
+                    backgroundColor: colors.alto,
+                    counts: altoCounts
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                    max: 100,
+                    ticks: {
+                        callback: (value) => value + '%',
+                        font: { size: 12 }
+                    }
+                },
+                y: {
+                    stacked: true,
+                    ticks: {
+                        font: { size: 11, weight: '600' },
+                        autoSkip: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 13, weight: 'bold' },
+                        padding: 12
+                    }
+                },
+                datalabels: {
+                    color: '#ffffff',
+                    font: { size: 11, weight: 'bold' },
+                    formatter: (value, context) => {
+                        const count = context.dataset.counts[context.dataIndex];
+                        return count > 0 ? count : '';
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ==================== FUNCIÓN HELPER YA NO SE USA ====================
+// El código de gráficos está inline usando IIFE (Immediately Invoked Function Expression)
+// para que sea idéntico a evaluation_results.html
+
+// ==================== GRÁFICOS DEMOGRÁFICOS POR GÉNERO (INDIVIDUALES) ====================
+// ==================== GÉNERO ====================
+{% if demographic_data.gender %}
+console.log('📈 Procesando gráficos de GÉNERO - {{ demographic_data.gender|length }} grupos');
+{% for group in demographic_data.gender %}
+(function() {
+    const canvas = document.getElementById('chart-gender-{{ forloop.counter }}');
+    if (!canvas) {
+        console.error('❌ Canvas chart-gender-{{ forloop.counter }} NO encontrado');
+        return;
+    }
+    console.log('✅ Canvas chart-gender-{{ forloop.counter }} encontrado');
+    
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    console.log('Dimensiones:', dimensionNames.length);
+    console.log('Datos bajo:', bajoData);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, 
+                legend: { display: true, position: 'top', labels: { font: { size: 11, weight: 'bold' } } } 
+            },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%', font: { size: 10 } } },
+                y: { stacked: true, ticks: { font: { size: 9 }, autoSkip: false } }
+            }
+        }
+    });
+    console.log('✅ Gráfico género {{ forloop.counter }} creado');
+})();
+{% endfor %}
+{% endif %}
+
+// ==================== GRÁFICOS DEMOGRÁFICOS POR GRUPO ====================
+// Obtener nombres de todas las dimensiones
+const allDimensionNames = dimensionLabels; // Ya definido arriba
+
+console.log('🔍 Dimensiones disponibles:', allDimensionNames);
+console.log('📊 Datos demográficos:', {{ demographic_data|length }});
+
+// ==================== EDAD: COPIAR CÓDIGO EXACTO DE evaluation_results.html ====================
+{% if demographic_data.age_range %}
+console.log('📈 Procesando gráficos de EDAD - {{ demographic_data.age_range|length }} grupos');
+{% for group in demographic_data.age_range %}
+(function() {
+    const canvas = document.getElementById('chart-age-{{ forloop.counter }}');
+    if (!canvas) {
+        console.error('❌ Canvas chart-age-{{ forloop.counter }} NO encontrado');
+        return;
+    }
+    console.log('✅ Canvas chart-age-{{ forloop.counter }} encontrado');
+    
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    console.log('Dimensiones:', dimensionNames.length);
+    console.log('Datos bajo:', bajoData);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, 
+                legend: { display: true, position: 'top', labels: { font: { size: 11, weight: 'bold' } } } 
+            },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%', font: { size: 10 } } },
+                y: { stacked: true, ticks: { font: { size: 9 }, autoSkip: false } }
+            }
+        }
+    });
+    console.log('✅ Gráfico edad {{ forloop.counter }} creado');
+})();
+{% endfor %}
+{% else %}
+console.log('⚠️ No hay datos de edad');
+{% endif %}
+
+// ==================== ÁREA DE TRABAJO ====================
+{% if demographic_data.work_area %}
+console.log('📈 Procesando gráficos de ÁREA - {{ demographic_data.work_area|length }} grupos');
+{% for group in demographic_data.work_area %}
+(function() {
+    const canvas = document.getElementById('chart-area-{{ forloop.counter }}');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                y: { stacked: true, ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+    console.log('✅ Gráfico área {{ forloop.counter }} creado');
+})();
+{% endfor %}
+{% endif %}
+
+// ==================== EDUCACIÓN ====================
+{% if demographic_data.education_level %}
+console.log('📈 Procesando gráficos de EDUCACIÓN - {{ demographic_data.education_level|length }} grupos');
+{% for group in demographic_data.education_level %}
+(function() {
+    const canvas = document.getElementById('chart-education-{{ forloop.counter }}');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                y: { stacked: true, ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+})();
+{% endfor %}
+{% endif %}
+
+// ==================== EXPERIENCIA/ANTIGÜEDAD ====================
+{% if demographic_data.experience_range %}
+console.log('📈 Procesando gráficos de EXPERIENCIA - {{ demographic_data.experience_range|length }} grupos');
+{% for group in demographic_data.experience_range %}
+(function() {
+    const canvas = document.getElementById('chart-experience-{{ forloop.counter }}');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                y: { stacked: true, ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+})();
+{% endfor %}
+{% endif %}
+
+// ==================== ETNIA ====================
+{% if demographic_data.ethnicity %}
+console.log('📈 Procesando gráficos de ETNIA - {{ demographic_data.ethnicity|length }} grupos');
+{% for group in demographic_data.ethnicity %}
+(function() {
+    const canvas = document.getElementById('chart-ethnicity-{{ forloop.counter }}');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                y: { stacked: true, ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+})();
+{% endfor %}
+{% endif %}
+
+// ==================== PROVINCIA ====================
+{% if demographic_data.province %}
+console.log('📈 Procesando gráficos de PROVINCIA - {{ demographic_data.province|length }} grupos');
+{% for group in demographic_data.province %}
+(function() {
+    const canvas = document.getElementById('chart-province-{{ forloop.counter }}');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                y: { stacked: true, ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+})();
+{% endfor %}
+{% endif %}
+
+// ==================== CIUDAD ====================
+{% if demographic_data.city %}
+console.log('📈 Procesando gráficos de CIUDAD - {{ demographic_data.city|length }} grupos');
+{% for group in demographic_data.city %}
+(function() {
+    const canvas = document.getElementById('chart-city-{{ forloop.counter }}');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+    const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionNames,
+            datasets: [
+                { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 10 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+            scales: {
+                x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                y: { stacked: true, ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+})();
+{% endfor %}
+{% endif %}
+
+console.log('✅ Todos los gráficos cargados correctamente');
+</script>
+
+</body>
+</html>

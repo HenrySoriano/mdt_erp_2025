@@ -1,0 +1,190 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de evaluación de riesgo psicosocial para empresas">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MDT ERP">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% url 'manifest' %}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'images/icon-192x192.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'images/icon-192x192.png' %}">
+    
+    <title>{% block title %}Sistema de Evaluación de Riesgo Psicosocial{% endblock %}</title>
+    {% tailwind_css %}
+</head>
+<body class="bg-slate-50 min-h-screen">
+    {% if user.is_authenticated %}
+    <!-- Indicador de estado online/offline -->
+    <div id="offline-status" class="fixed top-0 left-0 right-0 z-50 text-center py-1.5 text-xs font-semibold hidden bg-yellow-500 text-yellow-900">
+        ⚠ Modo offline - Los datos se sincronizarán cuando vuelva la conexión
+    </div>
+    
+    <nav class="bg-gradient-to-r from-blue-800 to-blue-900 text-white shadow-xl border-b-2 border-blue-700">
+        <div class="container mx-auto px-3 sm:px-4">
+            <div class="flex justify-between items-center py-3 sm:py-4">
+                <div class="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
+                    <div class="bg-blue-600 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                        <svg class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">Sistema de Evaluación Psicosocial</h1>
+                </div>
+                <div class="flex items-center space-x-2 sm:space-x-4 lg:space-x-6 flex-shrink-0">
+                    <span class="text-xs sm:text-sm text-blue-100 hidden sm:inline truncate max-w-[120px] lg:max-w-none">{{ user.email }}</span>
+                    <div class="hidden lg:flex items-center space-x-4">
+                        {% if user.is_superuser or user.role == 'SUPERUSER' %}
+                            <a href="{% url 'superuser_dashboard' %}" class="hover:text-sky-300 transition-colors font-medium text-sm">Dashboard</a>
+                        {% elif user.role == 'COMPANY_ADMIN' %}
+                            <a href="{% url 'admin_dashboard' %}" class="hover:text-sky-300 transition-colors font-medium text-sm">Dashboard</a>
+                            <a href="{% url 'company_list' %}" class="hover:text-sky-300 transition-colors font-medium text-sm">Empresas</a>
+                            <a href="{% url 'employee_list' %}" class="hover:text-sky-300 transition-colors font-medium text-sm">Empleados</a>
+                            <a href="{% url 'evaluation_results' %}" class="hover:text-sky-300 transition-colors font-medium text-sm">Resultados</a>
+                        {% elif user.role == 'EMPLOYEE' %}
+                            <a href="{% url 'employee_dashboard' %}" class="hover:text-sky-300 transition-colors font-medium text-sm">Mi Dashboard</a>
+                            <a href="{% url 'compare_evaluations' %}" class="hover:text-sky-300 transition-colors font-medium text-sm">Comparar</a>
+                        {% endif %}
+                    </div>
+                    <!-- Menú móvil -->
+                    <div class="lg:hidden relative">
+                        <button id="mobileMenuBtn" class="p-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        </button>
+                        <div id="mobileMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 border border-slate-200">
+                            <div class="py-2">
+                                {% if user.is_superuser or user.role == 'SUPERUSER' %}
+                                    <a href="{% url 'superuser_dashboard' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Dashboard</a>
+                                {% elif user.role == 'COMPANY_ADMIN' %}
+                                    <a href="{% url 'admin_dashboard' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Dashboard</a>
+                                    <a href="{% url 'company_list' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Empresas</a>
+                                    <a href="{% url 'employee_list' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Empleados</a>
+                                    <a href="{% url 'evaluation_results' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Resultados</a>
+                                {% elif user.role == 'EMPLOYEE' %}
+                                    <a href="{% url 'employee_dashboard' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Mi Dashboard</a>
+                                    <a href="{% url 'compare_evaluations' %}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Comparar</a>
+                                {% endif %}
+                                <div class="border-t border-slate-200 mt-2 pt-2">
+                                    <a href="{% url 'logout' %}" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold">Cerrar Sesión</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="{% url 'logout' %}" class="bg-red-500 hover:bg-red-600 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors font-semibold shadow-md text-xs sm:text-sm whitespace-nowrap hidden lg:inline-block">Cerrar Sesión</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <script>
+        // Toggle mobile menu
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuBtn = document.getElementById('mobileMenuBtn');
+            const menu = document.getElementById('mobileMenu');
+            if (menuBtn && menu) {
+                menuBtn.addEventListener('click', function() {
+                    menu.classList.toggle('hidden');
+                });
+                // Close menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!menuBtn.contains(event.target) && !menu.contains(event.target)) {
+                        menu.classList.add('hidden');
+                    }
+                });
+            }
+        });
+    </script>
+    {% endif %}
+    
+    <!-- Scripts PWA y Offline -->
+    <script src="{% static 'js/offline-manager.js' %}"></script>
+    <script src="{% static 'js/pwa-install.js' %}"></script>
+    
+    <script>
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{% url "service_worker" %}', { scope: '/' })
+                    .then(function(registration) {
+                        console.log('✅ Service Worker registrado:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('❌ Error registrando Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+
+    {% if messages %}
+    <div class="container mx-auto px-4 mt-4" id="messages-container">
+        {% for message in messages %}
+        <div class="message-alert {% if message.tags == 'error' %}bg-red-50 border-red-500 text-red-800{% elif message.tags == 'success' %}bg-green-50 border-green-500 text-green-800{% elif message.tags == 'warning' %}bg-amber-50 border-amber-500 text-amber-800{% else %}bg-blue-50 border-blue-500 text-blue-800{% endif %} border-l-4 p-4 mb-4 rounded-lg shadow-md flex items-start justify-between transition-all duration-300" data-message-id="{{ forloop.counter }}">
+            <p class="flex-1 pr-4 font-medium">{{ message }}</p>
+            <button type="button" class="close-message text-slate-700 hover:text-slate-900 focus:outline-none transition-colors" aria-label="Cerrar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer class="bg-slate-800 text-white mt-12 border-t-2 border-slate-700">
+        <div class="container mx-auto px-4 py-6 text-center">
+            <p class="text-slate-200">&copy; 2025 Sistema de Evaluación de Riesgo Psicosocial. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script>
+    // Auto-dismiss y cierre manual de mensajes
+    document.addEventListener('DOMContentLoaded', function() {
+        const messages = document.querySelectorAll('.message-alert');
+        
+        messages.forEach(function(message) {
+            // Auto-dismiss después de 5 segundos (3 segundos para success/info, 7 para error/warning)
+            const messageType = message.classList.contains('bg-green-50') || message.classList.contains('bg-blue-50') ? 3000 : 7000;
+            
+            const autoDismiss = setTimeout(function() {
+                dismissMessage(message);
+            }, messageType);
+            
+            // Botón de cerrar
+            const closeButton = message.querySelector('.close-message');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    clearTimeout(autoDismiss);
+                    dismissMessage(message);
+                });
+            }
+        });
+        
+        function dismissMessage(message) {
+            message.style.opacity = '0';
+            message.style.transform = 'translateX(100%)';
+            setTimeout(function() {
+                message.remove();
+                // Si no hay más mensajes, ocultar el contenedor
+                const container = document.getElementById('messages-container');
+                if (container && container.children.length === 0) {
+                    container.remove();
+                }
+            }, 300);
+        }
+    });
+    </script>
+</body>
+</html>

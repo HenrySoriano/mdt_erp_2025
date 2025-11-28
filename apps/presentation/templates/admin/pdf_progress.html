@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generando Informe PDF...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .shimmer {
+            background: linear-gradient(to right, #dc2626 0%, #f97316 50%, #dc2626 100%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-2xl w-full">
+        <!-- Card principal -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
+            <!-- Icono animado -->
+            <div class="flex justify-center">
+                <div class="relative">
+                    <div class="w-24 h-24 bg-gradient-to-br from-red-500 to-orange-600 rounded-full flex items-center justify-center animate-pulse-slow">
+                        <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <!-- Círculo de pulso -->
+                    <div class="absolute inset-0 rounded-full bg-red-400 opacity-30 animate-ping"></div>
+                </div>
+            </div>
+
+            <!-- Título -->
+            <div class="text-center space-y-2">
+                <h1 class="text-3xl font-bold text-slate-800">
+                    Elaborando Informe en PDF
+                </h1>
+                <p class="text-slate-600">
+                    Estamos generando tu informe completo con gráficos, tablas y recomendaciones profesionales
+                </p>
+            </div>
+
+            <!-- Barra de progreso -->
+            <div class="space-y-2">
+                <div class="flex justify-between text-sm font-medium text-gray-700">
+                    <span id="statusText">Iniciando proceso...</span>
+                    <span id="percentageText">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner">
+                    <div id="progressBar" class="shimmer h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Pasos del proceso -->
+            <div class="space-y-3 text-sm">
+                <div id="step1" class="flex items-center space-x-3 text-gray-400">
+                    <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        <span class="text-xs">1</span>
+                    </div>
+                    <span>Recopilando datos de evaluación</span>
+                </div>
+                <div id="step2" class="flex items-center space-x-3 text-gray-400">
+                    <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        <span class="text-xs">2</span>
+                    </div>
+                    <span>Generando gráficos profesionales</span>
+                </div>
+                <div id="step3" class="flex items-center space-x-3 text-gray-400">
+                    <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        <span class="text-xs">3</span>
+                    </div>
+                    <span>Procesando tablas y recomendaciones</span>
+                </div>
+                <div id="step4" class="flex items-center space-x-3 text-gray-400">
+                    <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        <span class="text-xs">4</span>
+                    </div>
+                    <span>Compilando documento PDF final</span>
+                </div>
+            </div>
+
+            <!-- Mensaje de paciencia -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-blue-500 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <p class="text-sm text-blue-800">
+                            <strong>Por favor, no cierres esta ventana.</strong><br>
+                            Este proceso puede tomar hasta 30 segundos debido a la generación completa del informe con todos sus elementos visuales.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-gray-500 text-sm">
+            <p>Sistema de Evaluación de Riesgo Psicosocial - MDT</p>
+        </div>
+    </div>
+
+    <script>
+        let progress = 0;
+        let currentStep = 0;
+        const steps = [
+            { id: 'step1', text: 'Recopilando datos de evaluación', duration: 3 },
+            { id: 'step2', text: 'Generando gráficos profesionales', duration: 8 },
+            { id: 'step3', text: 'Procesando tablas y recomendaciones', duration: 6 },
+            { id: 'step4', text: 'Compilando documento PDF final', duration: 3 }
+        ];
+
+        function updateStep(stepIndex) {
+            const step = document.getElementById(steps[stepIndex].id);
+            step.classList.remove('text-gray-400');
+            step.classList.add('text-red-600', 'font-semibold');
+            
+            const circle = step.querySelector('div');
+            circle.classList.remove('border-gray-300');
+            circle.classList.add('bg-red-600', 'border-red-600', 'text-white');
+        }
+
+        function completeStep(stepIndex) {
+            const step = document.getElementById(steps[stepIndex].id);
+            const circle = step.querySelector('div');
+            circle.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>';
+            step.classList.add('text-green-600');
+        }
+
+        function animateProgress() {
+            const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0) * 1000;
+            const interval = 100;
+            const increment = 100 / (totalDuration / interval);
+            
+            let elapsed = 0;
+            
+            const timer = setInterval(() => {
+                progress += increment;
+                elapsed += interval;
+                
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(timer);
+                }
+                
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('percentageText').textContent = Math.round(progress) + '%';
+                
+                let cumulativeTime = 0;
+                for (let i = 0; i < steps.length; i++) {
+                    cumulativeTime += steps[i].duration * 1000;
+                    if (elapsed >= cumulativeTime && currentStep < i + 1) {
+                        if (currentStep < steps.length) {
+                            completeStep(currentStep);
+                        }
+                        currentStep = i + 1;
+                        if (currentStep < steps.length) {
+                            updateStep(currentStep);
+                            document.getElementById('statusText').textContent = steps[currentStep].text + '...';
+                        }
+                    }
+                }
+            }, interval);
+        }
+
+        window.onload = function() {
+            updateStep(0);
+            document.getElementById('statusText').textContent = steps[0].text + '...';
+            animateProgress();
+            
+            const url = '{{ generate_url }}';
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error('Error generando PDF');
+                    return response.blob();
+                })
+                .then(blob => {
+                    for (let i = currentStep; i < steps.length; i++) {
+                        completeStep(i);
+                    }
+                    progress = 100;
+                    document.getElementById('progressBar').style.width = '100%';
+                    document.getElementById('percentageText').textContent = '100%';
+                    document.getElementById('statusText').textContent = '¡Completado! Descargando...';
+                    
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '{{ filename }}';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    
+                    setTimeout(() => {
+                        document.getElementById('statusText').textContent = '✅ ¡Descarga completada exitosamente!';
+                        document.querySelector('.bg-blue-50').classList.remove('bg-blue-50', 'border-blue-500');
+                        document.querySelector('.bg-blue-50').classList.add('bg-green-50', 'border-green-500');
+                        document.querySelector('.text-blue-800').classList.remove('text-blue-800');
+                        document.querySelector('.text-blue-800').classList.add('text-green-800');
+                        document.querySelector('.text-blue-800').innerHTML = '<strong>¡Listo!</strong><br>Tu informe PDF ha sido descargado correctamente. Puedes cerrar esta ventana.';
+                        
+                        setTimeout(() => {
+                            window.location.href = '{{ back_url }}';
+                        }, 3000);
+                    }, 500);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('statusText').textContent = '❌ Error al generar PDF';
+                    document.getElementById('progressBar').classList.remove('shimmer');
+                    document.getElementById('progressBar').classList.add('bg-red-500');
+                    alert('Ocurrió un error al generar el PDF. Por favor, intenta nuevamente.');
+                });
+        };
+    </script>
+</body>
+</html>
+

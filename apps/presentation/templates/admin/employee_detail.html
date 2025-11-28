@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle del Empleado - {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Botón Volver Atrás -->
+    <div class="mb-4">
+        <a href="{% url 'employee_list' %}" class="inline-flex items-center text-slate-600 hover:text-slate-900 transition">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver a Empleados
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">{{ employee.full_name }}</h1>
+                <p class="text-blue-100">{{ employee.position }} - {{ employee.area }}</p>
+                <p class="text-blue-100 mt-1">{{ employee.company.name }}</p>
+            </div>
+            <div class="flex space-x-2">
+                <a href="{% url 'edit_employee' employee.id %}" class="px-4 py-2 bg-white text-blue-800 rounded-lg hover:bg-blue-50 font-semibold transition">
+                    Editar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Información Principal -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Información Personal -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">Información Personal</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Cédula</label>
+                        <p class="text-slate-900">{{ employee.identification }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Email</label>
+                        <p class="text-slate-900">{{ employee.user.email }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Contraseña</label>
+                        <div class="flex items-center gap-2">
+                            {% if employee.user.stored_password %}
+                            {% if user.is_superuser or user.role == 'SUPERUSER' %}
+                            {% if employee_password_decrypted %}
+                            <input type="password" id="employeePassword" value="{{ employee_password_decrypted }}" readonly class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-slate-900 font-mono text-sm">
+                            <button type="button" id="toggleEmployeePassword" class="px-3 py-2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                                <svg id="eyeIconEmployee" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <svg id="eyeOffIconEmployee" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                </svg>
+                            </button>
+                            {% else %}
+                            <input type="text" value="*** Error al desencriptar" readonly class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-red-500 font-mono text-sm">
+                            {% endif %}
+                            {% else %}
+                            <input type="text" value="*** Encriptada (solo superusuarios pueden ver)" readonly class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 font-mono text-sm">
+                            {% endif %}
+                            {% else %}
+                            <input type="text" value="No disponible" readonly class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 font-mono text-sm">
+                            <p class="text-xs text-gray-500 mt-1">Este usuario fue creado antes de implementar el almacenamiento de contraseñas. Edita el usuario para establecer una nueva contraseña.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Fecha de Nacimiento</label>
+                        <p class="text-slate-900">{{ employee.date_of_birth|date:"d/m/Y" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Edad</label>
+                        <p class="text-slate-900">{{ employee.age }} años 
+                            <span class="ml-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded">
+                                {{ employee.get_age_range_display }}
+                            </span>
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Género</label>
+                        <p class="text-slate-900">{{ employee.get_gender_display }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Etnia</label>
+                        <p class="text-slate-900">{{ employee.get_ethnicity_display }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información Laboral -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">Información Laboral</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Empresa</label>
+                        <p class="text-slate-900">{{ employee.company.name }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Cargo</label>
+                        <p class="text-slate-900">{{ employee.position }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Área (Interno)</label>
+                        <p class="text-slate-900">{{ employee.area }}</p>
+                        <p class="text-xs text-gray-500">Nombre interno</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Área ERP</label>
+                        <p class="text-slate-900">
+                            {{ employee.get_work_area_erp_display }}
+                            <span class="ml-2 px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-semibold rounded">
+                                {{ employee.work_area_erp }}
+                            </span>
+                        </p>
+                        <p class="text-xs text-blue-600">Clasificación MDT</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Fecha de Ingreso</label>
+                        <p class="text-slate-900">{{ employee.hire_date|date:"d/m/Y" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Antigüedad</label>
+                        <p class="text-slate-900">{{ employee.years_of_experience }} años
+                            <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                                {{ employee.get_experience_range_display }}
+                            </span>
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">Calculado automáticamente desde la fecha de ingreso</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Nivel de Educación</label>
+                        <p class="text-slate-900">{{ employee.get_education_level_display }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ubicación -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">Ubicación</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Provincia</label>
+                        <p class="text-slate-900">{{ employee.province }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Ciudad</label>
+                        <p class="text-slate-900">{{ employee.city }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Estado -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">Estado</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Estado del Usuario</label>
+                        {% if employee.user.is_active %}
+                        <span class="mt-2 inline-flex px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
+                            Activo
+                        </span>
+                        {% else %}
+                        <span class="mt-2 inline-flex px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800">
+                            Inactivo
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Fecha de Registro</label>
+                        <p class="text-slate-900">{{ employee.created_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold text-slate-600">Última Actualización</label>
+                        <p class="text-slate-900">{{ employee.updated_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluaciones -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">Evaluaciones</h2>
+                {% if evaluations %}
+                <div class="space-y-2">
+                    {% for evaluation in evaluations %}
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div>
+                            <p class="text-sm font-medium text-slate-900">Año {{ evaluation.year }}</p>
+                            <p class="text-xs text-gray-500">
+                                {% if evaluation.is_complete %}
+                                Completada el {{ evaluation.date_completed|date:"d/m/Y" }}
+                                {% else %}
+                                En progreso
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% if evaluation.is_complete %}
+                        <a href="{% url 'view_evaluation_results' evaluation.id %}" class="text-blue-800 hover:text-indigo-900 text-sm">
+                            Ver
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500">No hay evaluaciones registradas</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.getElementById('toggleEmployeePassword');
+    const passwordInput = document.getElementById('employeePassword');
+    const eyeIcon = document.getElementById('eyeIconEmployee');
+    const eyeOffIcon = document.getElementById('eyeOffIconEmployee');
+    
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'password') {
+                eyeIcon.classList.remove('hidden');
+                eyeOffIcon.classList.add('hidden');
+            } else {
+                eyeIcon.classList.add('hidden');
+                eyeOffIcon.classList.remove('hidden');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+

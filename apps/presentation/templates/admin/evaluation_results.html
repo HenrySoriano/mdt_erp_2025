@@ -1,0 +1,2221 @@
+{% extends 'base.html' %}
+{% load dict_filters %}
+
+{% block title %}Resultados de Evaluaciones{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-4">
+    <!-- Header con Nombre de Empresa Destacado -->
+    <div class="bg-gradient-to-r from-blue-800 to-blue-900 rounded-xl shadow-xl p-4 sm:p-6 border-2 border-blue-700">
+        <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+            <!-- Información de Empresa y Título -->
+            <div class="flex-1 min-w-0">
+                {% if company %}
+                <div class="bg-white rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 shadow-md inline-flex items-center mb-2 sm:mb-3">
+                    <svg class="h-6 w-6 sm:h-8 sm:w-8 text-blue-800 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <div class="min-w-0">
+                        <div class="text-xs text-slate-700 font-medium">EMPRESA</div>
+                        <div class="text-lg sm:text-xl font-bold text-slate-800 truncate">{{ company.name }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-white rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 shadow-md inline-flex items-center mb-2 sm:mb-3">
+                    <svg class="h-6 w-6 sm:h-8 sm:w-8 text-blue-800 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <div class="text-xs text-slate-700 font-medium">VISTA</div>
+                        <div class="text-lg sm:text-xl font-bold text-slate-800">Resultados Globales</div>
+                    </div>
+                </div>
+                {% endif %}
+                <h1 class="text-2xl sm:text-3xl font-bold text-white">Evaluación de Riesgo Psicosocial</h1>
+                <p class="mt-1 text-xs sm:text-sm text-blue-100">Análisis integral de resultados - Año {{ year }}</p>
+            </div>
+            
+            <!-- Controles y Botones de Acción -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 lg:flex-shrink-0">
+                <!-- Year Filter - Compacto -->
+                <form method="get" class="flex items-center space-x-2 bg-white rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-md" id="yearForm">
+                    <label for="year" class="text-xs sm:text-sm font-medium text-slate-700 hidden sm:inline">📅</label>
+                    <select name="year" id="year" onchange="this.form.submit()" class="text-xs sm:text-sm border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md font-semibold text-slate-900 py-1 sm:py-1.5 px-2">
+                        <option value="2025" {% if year|stringformat:"i" == "2025" %}selected{% endif %}>2025</option>
+                        <option value="2024" {% if year|stringformat:"i" == "2024" %}selected{% endif %}>2024</option>
+                        <option value="2023" {% if year|stringformat:"i" == "2023" %}selected{% endif %}>2023</option>
+                    </select>
+                </form>
+                
+                <!-- Botones de Acción - Grid Responsive -->
+                <div class="grid grid-cols-2 sm:grid-cols-2 lg:flex lg:flex-row gap-2">
+                    <!-- Previsualizar PDF -->
+                    <a href="{% if company %}{% url 'pdf_preview_by_company' company.id %}?year={{ year }}{% else %}{% url 'pdf_preview' %}?year={{ year }}{% endif %}" 
+                       target="_blank"
+                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <span class="hidden sm:inline">Ver PDF</span>
+                        <span class="sm:hidden">PDF</span>
+                    </a>
+                    
+                    <!-- Previsualizar PowerPoint -->
+                    <a href="{% if company %}{% url 'preview_pptx_report_by_company' company.id %}?year={{ year }}{% else %}{% url 'preview_pptx_report' %}?year={{ year }}{% endif %}" 
+                       target="_blank"
+                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <span class="hidden sm:inline">Ver PPT</span>
+                        <span class="sm:hidden">PPT</span>
+                    </a>
+                    
+                    <!-- Descargar PowerPoint -->
+                    <a href="{% if company %}{% url 'pptx_progress_by_company' company.id %}?year={{ year }}{% else %}{% url 'pptx_progress' %}?year={{ year }}{% endif %}"
+                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <span class="hidden sm:inline">Desc. PPT</span>
+                        <span class="sm:hidden">PPT</span>
+                    </a>
+                    
+                    <!-- Excel Anónimo -->
+                    <a href="{% if company %}{% url 'download_anonymous_evaluations_excel_by_company' company.id %}?year={{ year }}{% else %}{% url 'download_anonymous_evaluations_excel' %}?year={{ year }}{% endif %}" 
+                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span class="hidden sm:inline">Excel</span>
+                        <span class="sm:hidden">XLS</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabs Navigation - Mejorado -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="border-b border-slate-200 overflow-x-auto">
+            <nav class="-mb-px flex space-x-1 sm:space-x-2 px-2 sm:px-4 lg:px-6" aria-label="Tabs" style="scrollbar-width: thin;">
+                <button onclick="switchTab('general')" id="tab-general" class="tab-button border-blue-500 text-blue-800 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    📊 Vista General
+                </button>
+                <button onclick="switchTab('compliance')" id="tab-compliance" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    ✅ Cumplimiento
+                </button>
+                <button onclick="switchTab('gender')" id="tab-gender" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    👥 Género
+                </button>
+                <button onclick="switchTab('age')" id="tab-age" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    🎂 Edad
+                </button>
+                <button onclick="switchTab('area')" id="tab-area" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    💼 Área
+                </button>
+                <button onclick="switchTab('education')" id="tab-education" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    🎓 Educación
+                </button>
+                <button onclick="switchTab('experience')" id="tab-experience" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    ⏱️ Antigüedad
+                </button>
+                <button onclick="switchTab('ethnicity')" id="tab-ethnicity" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    🌍 Etnia
+                </button>
+                <button onclick="switchTab('location')" id="tab-location" class="tab-button border-transparent text-slate-700 hover:text-slate-900 hover:border-slate-300 whitespace-nowrap py-2 sm:py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex-shrink-0">
+                    📍 Ubicación
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- ========== TAB: VISTA GENERAL ========== -->
+    <div id="content-general" class="tab-content">
+        <!-- Summary Stats -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <dl class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                    <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
+                        <dt class="text-sm font-medium text-slate-700 truncate">Total Evaluaciones</dt>
+                        <dd class="mt-1 text-3xl font-semibold text-slate-900">{{ total_evaluations }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Resultado Global de la Evaluación -->
+        {% if total_evaluations > 0 %}
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6 mt-6">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3">
+                <div class="flex items-center justify-center mb-1">
+                    {% if company %}
+                    <span class="bg-white text-blue-600 px-4 py-1 rounded-full text-sm font-bold mr-3 shadow-md">
+                        🏢 {{ company.name }}
+                    </span>
+                    {% endif %}
+                    <span class="bg-blue-800 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                        Año {{ year }}
+                    </span>
+                </div>
+                <h2 class="text-xl font-bold text-white text-center">📊 RESULTADO GLOBAL DE LA EVALUACIÓN DE RIESGO PSICOSOCIAL</h2>
+            </div>
+            
+            <!-- Tabla de Resultados Globales -->
+            <div class="p-4">
+                <div class="overflow-hidden border-2 border-slate-200 rounded-lg mb-4">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b-2 border-slate-300">
+                                <th class="px-4 py-2 bg-gray-50 text-left text-xs font-bold text-slate-900 uppercase border-r-2 border-slate-300">
+                                    Nivel de Riesgo
+                                </th>
+                                <th class="px-4 py-2 bg-green-500 text-center text-xs font-bold text-white uppercase border-r-2 border-white">
+                                    RIESGO BAJO
+                                </th>
+                                <th class="px-4 py-2 bg-yellow-500 text-center text-xs font-bold text-white uppercase border-r-2 border-white">
+                                    RIESGO MEDIO
+                                </th>
+                                <th class="px-4 py-2 bg-red-500 text-center text-xs font-bold text-white uppercase">
+                                    RIESGO ALTO
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="bg-white">
+                                <td class="px-4 py-2 text-xs font-semibold text-slate-900 border-r-2 border-slate-300">
+                                    Porcentaje Global
+                                </td>
+                                <td class="px-4 py-3 text-center border-r-2 border-slate-200 bg-green-50">
+                                    <div class="text-2xl font-bold text-green-700">
+                                        {{ global_risk_percentages.bajo|floatformat:2 }}%
+                                    </div>
+                                    <div class="text-xs text-gray-600 mt-0.5">
+                                        ({{ global_risk_counts.bajo }} persona{{ global_risk_counts.bajo|pluralize:"s" }})
+                                    </div>
+                                    <div class="text-xs text-slate-700 font-medium mt-1">
+                                        175-232 pts
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-center border-r-2 border-slate-200 bg-yellow-50">
+                                    <div class="text-2xl font-bold text-yellow-700">
+                                        {{ global_risk_percentages.medio|floatformat:2 }}%
+                                    </div>
+                                    <div class="text-xs text-gray-600 mt-0.5">
+                                        ({{ global_risk_counts.medio }} persona{{ global_risk_counts.medio|pluralize:"s" }})
+                                    </div>
+                                    <div class="text-xs text-slate-700 font-medium mt-1">
+                                        117-174 pts
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-center bg-red-50">
+                                    <div class="text-2xl font-bold text-red-700">
+                                        {{ global_risk_percentages.alto|floatformat:2 }}%
+                                    </div>
+                                    <div class="text-xs text-gray-600 mt-0.5">
+                                        ({{ global_risk_counts.alto }} persona{{ global_risk_counts.alto|pluralize:"s" }})
+                                    </div>
+                                    <div class="text-xs text-slate-700 font-medium mt-1">
+                                        58-116 pts
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Gráfico de Barras del Resultado Global -->
+                <div class="mb-4">
+                    <div class="relative pt-1">
+                        <div class="flex h-10 overflow-hidden rounded-lg border-2 border-slate-300 shadow-md">
+                            {% if global_risk_percentages.bajo > 0 %}
+                            <div class="flex items-center justify-center bg-green-500 text-white font-bold text-sm transition-all duration-300 hover:bg-green-600" 
+                                 style="width: {{ global_risk_percentages.bajo }}%"
+                                 title="Riesgo Bajo: {{ global_risk_percentages.bajo|floatformat:2 }}%">
+                                {% if global_risk_percentages.bajo > 10 %}{{ global_risk_percentages.bajo|floatformat:1 }}%{% endif %}
+                            </div>
+                            {% endif %}
+                            {% if global_risk_percentages.medio > 0 %}
+                            <div class="flex items-center justify-center bg-yellow-500 text-white font-bold text-sm transition-all duration-300 hover:bg-yellow-600" 
+                                 style="width: {{ global_risk_percentages.medio }}%"
+                                 title="Riesgo Medio: {{ global_risk_percentages.medio|floatformat:2 }}%">
+                                {% if global_risk_percentages.medio > 10 %}{{ global_risk_percentages.medio|floatformat:1 }}%{% endif %}
+                            </div>
+                            {% endif %}
+                            {% if global_risk_percentages.alto > 0 %}
+                            <div class="flex items-center justify-center bg-red-500 text-white font-bold text-sm transition-all duration-300 hover:bg-red-600" 
+                                 style="width: {{ global_risk_percentages.alto }}%"
+                                 title="Riesgo Alto: {{ global_risk_percentages.alto|floatformat:2 }}%">
+                                {% if global_risk_percentages.alto > 10 %}{{ global_risk_percentages.alto|floatformat:1 }}%{% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Interpretación de Resultados -->
+                <div class="border-t-2 border-slate-300 pt-4">
+                    <h3 class="text-lg font-bold text-slate-900 mb-3 text-center">📋 INTERPRETACIÓN DE RESULTADOS</h3>
+                    
+                    <div class="space-y-2">
+                        <!-- Riesgo Bajo -->
+                        <div class="border-l-4 border-green-500 bg-green-50 p-3 rounded-r-lg">
+                            <h4 class="font-bold text-green-700 mb-1 flex items-center text-sm">
+                                <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                RIESGO BAJO
+                            </h4>
+                            <p class="text-slate-700 text-xs leading-relaxed">
+                                El riesgo tiene un <strong>potencial mínimo de impacto</strong> sobre la seguridad y salud, no genera efectos nocivos 
+                                a corto plazo. Los efectos pueden ser prevenidos mediante el monitoreo periódico. Las acciones se orientan a 
+                                <strong>mantener el nivel de riesgo</strong> mediante controles continuos.
+                            </p>
+                        </div>
+                        
+                        <!-- Riesgo Medio -->
+                        <div class="border-l-4 border-yellow-500 bg-yellow-50 p-3 rounded-r-lg">
+                            <h4 class="font-bold text-yellow-700 mb-1 flex items-center text-sm">
+                                <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                                RIESGO MEDIO
+                            </h4>
+                            <p class="text-slate-700 text-xs leading-relaxed">
+                                El riesgo tiene un <strong>potencial moderado de impacto</strong> sobre la seguridad y salud que puede comprometer 
+                                las mismas en el mediano plazo, causando efectos nocivos para la salud, integridad física y enfermedades laborales. 
+                                Si no se aplican continuamente las medidas de seguridad y prevención, los impactos podrían incrementarse en su 
+                                probabilidad y frecuencia.
+                            </p>
+                        </div>
+                        
+                        <!-- Riesgo Alto -->
+                        <div class="border-l-4 border-red-500 bg-red-50 p-3 rounded-r-lg">
+                            <h4 class="font-bold text-red-700 mb-1 flex items-center text-sm">
+                                <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                                RIESGO ALTO
+                            </h4>
+                            <p class="text-slate-700 text-xs leading-relaxed">
+                                El riesgo tiene un <strong>potencial alto de impacto</strong> sobre la seguridad y salud de las personas, con niveles 
+                                de peligro <strong>intolerables</strong> que pueden generar efectos nocivos inmediatos sobre la salud e integridad física. 
+                                Las medidas de seguridad y prevención deben aplicarse de manera <strong>continua y prioritaria</strong> para impedir 
+                                el incremento de la probabilidad y frecuencia.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Gráfico de Barras Apiladas -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Evaluación de riesgo psicosocial por dimensión</h2>
+            <p class="text-sm text-gray-600 mt-1">Distribución porcentual de niveles de riesgo por dimensión</p>
+        </div>
+        <div class="relative" style="height: 600px;">
+            <canvas id="adminDimensionsChart"></canvas>
+        </div>
+        <div class="mt-4 flex justify-center space-x-6 text-sm">
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                <span class="text-slate-700 font-semibold">RIESGO BAJO</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+                <span class="text-slate-700 font-semibold">RIESGO MEDIO</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                <span class="text-slate-700 font-semibold">RIESGO ALTO</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Resultados por Dimensión -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-slate-900">Resultados por Dimensión</h3>
+            <p class="mt-1 max-w-2xl text-sm text-slate-700">Distribución de niveles de riesgo por dimensión evaluada.</p>
+        </div>
+        <div class="border-t border-slate-200 overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Dimensión
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Riesgo Bajo
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Riesgo Medio
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Riesgo Alto
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Total
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for dim_data in dimension_stats_list %}
+                    {% with stats=dim_data.stats %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-medium text-slate-900">
+                            {{ dim_data.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex flex-col items-center">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    {{ stats.BAJO }}
+                                </span>
+                                <span class="mt-1 text-xs text-slate-700 font-medium">
+                                    {{ stats.porcentaje_bajo }}%
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex flex-col items-center">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    {{ stats.MEDIO }}
+                                </span>
+                                <span class="mt-1 text-xs text-slate-700 font-medium">
+                                    {{ stats.porcentaje_medio }}%
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex flex-col items-center">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    {{ stats.ALTO }}
+                                </span>
+                                <span class="mt-1 text-xs text-slate-700 font-medium">
+                                    {{ stats.porcentaje_alto }}%
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 text-center font-medium">
+                            {{ total_evaluations }}
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-slate-700">
+                            No hay resultados disponibles para este período.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Recomendaciones Estratégicas para la Gestión Empresarial -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 mb-6 border-l-4 border-indigo-600 mt-8">
+        <div class="flex items-start mb-6">
+            <div class="flex-shrink-0">
+                <svg class="h-10 w-10 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            </div>
+            <div class="ml-4 flex-1">
+                <h3 class="text-2xl font-bold text-slate-900 mb-2">📋 Recomendaciones Estratégicas para la Gestión Empresarial</h3>
+                <p class="text-sm text-indigo-700 font-medium mb-1">Nivel de Riesgo General: 
+                    <span class="px-3 py-1 rounded-full text-white font-bold
+                        {% if overall_risk == 'ALTO' %}bg-red-600
+                        {% elif overall_risk == 'MEDIO' %}bg-yellow-600
+                        {% else %}bg-green-600{% endif %}">
+                        {{ overall_risk }}
+                    </span>
+                </p>
+                <p class="text-sm text-gray-600">Basado en el análisis de {{ total_evaluations }} evaluaciones completadas en {{ year }}</p>
+            </div>
+        </div>
+        
+        <div class="space-y-2">
+            {% for rec in general_recommendations %}
+            <div class="flex items-start bg-white rounded-lg p-3 shadow-sm border-l-2 border-indigo-400">
+                <span class="flex-shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-indigo-600 text-white text-xs font-bold mr-2 mt-0.5">
+                    {{ forloop.counter }}
+                </span>
+                <p class="text-slate-700 text-sm leading-snug">{{ rec|safe }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Plan de Acción por Dimensión -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="mb-6">
+            <h3 class="text-2xl font-bold text-slate-900 mb-2 flex items-center">
+                <svg class="h-7 w-7 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+                Plan de Acción por Dimensión
+            </h3>
+            <p class="text-gray-600">Haga clic en cada dimensión para ver las recomendaciones específicas según el nivel de riesgo</p>
+        </div>
+        
+        <div class="space-y-3">
+            {% for dim_data in dimension_stats_list %}
+            {% with stats=dim_data.stats %}
+            <details class="border border-slate-300 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                <summary class="cursor-pointer bg-gray-50 hover:bg-gray-100 p-4 flex items-center justify-between font-medium">
+                    <div class="flex items-center flex-1">
+                        <span class="font-semibold text-slate-900 flex-1">{{ dim_data.name }}</span>
+                        <div class="ml-4 flex items-center space-x-2 text-xs">
+                            <span class="px-2 py-1 rounded bg-green-100 text-green-800 font-semibold">B: {{ stats.BAJO }}</span>
+                            <span class="px-2 py-1 rounded bg-yellow-100 text-yellow-800 font-semibold">M: {{ stats.MEDIO }}</span>
+                            <span class="px-2 py-1 rounded bg-red-100 text-red-800 font-semibold">A: {{ stats.ALTO }}</span>
+                        </div>
+                    </div>
+                    <svg class="h-5 w-5 text-slate-700 ml-2 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </summary>
+                
+                <div class="p-6 bg-white border-t border-slate-200">
+                    <!-- Recomendaciones para ALTO -->
+                    {% if stats.ALTO > 0 %}
+                    <div class="mb-6 pb-6 border-b border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-lg font-bold text-red-700 flex items-center">
+                                <span class="inline-block w-3 h-3 bg-red-600 rounded-full mr-2"></span>
+                                Riesgo ALTO ({{ stats.ALTO }} personas - {{ stats.porcentaje_alto }}%)
+                            </h4>
+                        </div>
+                        <ul class="space-y-2">
+                            {% for rec in employer_recommendations|get_item:dim_data.name|get_item:'ALTO' %}
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-100 text-red-700 text-xs font-bold mr-2 mt-0.5">
+                                    {{ forloop.counter }}
+                                </span>
+                                <span class="text-gray-800 text-sm leading-snug">{{ rec|safe }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Recomendaciones para MEDIO -->
+                    {% if stats.MEDIO > 0 %}
+                    <div class="mb-6 pb-6 {% if stats.ALTO > 0 or stats.BAJO > 0 %}border-b border-slate-200{% endif %}">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-lg font-bold text-yellow-700 flex items-center">
+                                <span class="inline-block w-3 h-3 bg-yellow-600 rounded-full mr-2"></span>
+                                Riesgo MEDIO ({{ stats.MEDIO }} personas - {{ stats.porcentaje_medio }}%)
+                            </h4>
+                        </div>
+                        <ul class="space-y-2">
+                            {% for rec in employer_recommendations|get_item:dim_data.name|get_item:'MEDIO' %}
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold mr-2 mt-0.5">
+                                    {{ forloop.counter }}
+                                </span>
+                                <span class="text-gray-800 text-sm leading-snug">{{ rec|safe }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Recomendaciones para BAJO -->
+                    {% if stats.BAJO > 0 %}
+                    <div class="mb-2">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-lg font-bold text-green-700 flex items-center">
+                                <span class="inline-block w-3 h-3 bg-green-600 rounded-full mr-2"></span>
+                                Riesgo BAJO ({{ stats.BAJO }} personas - {{ stats.porcentaje_bajo }}%)
+                            </h4>
+                        </div>
+                        <ul class="space-y-2">
+                            {% for rec in employer_recommendations|get_item:dim_data.name|get_item:'BAJO' %}
+                            <li class="flex items-start">
+                                <span class="flex-shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-green-100 text-green-700 text-xs font-bold mr-2 mt-0.5">
+                                    {{ forloop.counter }}
+                                </span>
+                                <span class="text-gray-800 text-sm leading-snug">{{ rec|safe }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </details>
+            {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+    </div>
+    <!-- FIN TAB: VISTA GENERAL -->
+    
+    <!-- ========== TAB: CUMPLIMIENTO ========== -->
+    <div id="content-compliance" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">✅ Indicadores de Cumplimiento</h2>
+            <p class="text-sm text-gray-600 mb-6">Control de participación y seguimiento de evaluaciones programadas vs completadas</p>
+            
+            <!-- Resumen General de Cumplimiento -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border border-indigo-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Programados</span>
+                        <svg class="w-6 h-6 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold text-slate-800">{{ total_programmed }}</div>
+                    <div class="text-xs text-slate-700 mt-1">Empleados cargados</div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-5 border border-green-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Completadas</span>
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold text-green-900">{{ total_completed }}</div>
+                    <div class="text-xs text-slate-700 mt-1">Evaluaciones finalizadas</div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg p-5 border border-yellow-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Pendientes</span>
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold text-yellow-900">{{ total_pending }}</div>
+                    <div class="text-xs text-slate-700 mt-1">Por completar</div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg p-5 border border-purple-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Cumplimiento</span>
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold text-purple-900">{{ completion_percentage|floatformat:1 }}%</div>
+                    <div class="text-xs text-slate-700 mt-1">Tasa de respuesta</div>
+                </div>
+            </div>
+            
+            <!-- Barra de progreso general -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-lg font-bold text-slate-700">Progreso General</h3>
+                    <span class="text-sm font-semibold text-gray-600">{{ total_completed }}/{{ total_programmed }} {{ completion_percentage|floatformat:1 }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-6 overflow-hidden shadow-inner relative">
+                    <div class="bg-gradient-to-r from-green-500 to-emerald-600 h-full rounded-full text-white text-xs font-bold transition-all duration-500 flex items-center justify-center" 
+                         style="width: {{ completion_percentage }}%; position: absolute; top: 0; left: 0; min-width: 0;">
+                        {% if completion_percentage > 10 %}<span>{{ completion_percentage|floatformat:1 }}%</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cumplimiento por Género -->
+            {% if completion_data.gender %}
+            <div class="mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">👥 Cumplimiento por Género</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for group in completion_data.gender %}
+                    <div class="bg-white border-2 border-slate-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
+                        <h4 class="font-bold text-slate-900 mb-3">{{ group.label }}</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Programados:</span>
+                                <span class="font-semibold text-indigo-700">{{ group.programmed }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Completados:</span>
+                                <span class="font-semibold text-green-700">{{ group.completed }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Pendientes:</span>
+                                <span class="font-semibold text-yellow-700">{{ group.pending }}</span>
+                            </div>
+                            <div class="pt-2 border-t">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-gray-600 font-medium">Cumplimiento:</span>
+                                    <span class="font-bold {% if group.completion_rate >= 80 %}text-green-700{% elif group.completion_rate >= 50 %}text-yellow-700{% else %}text-red-700{% endif %}">
+                                        {{ group.completion_rate|floatformat:1 }}%
+                                    </span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="{% if group.completion_rate >= 80 %}bg-green-500{% elif group.completion_rate >= 50 %}bg-yellow-500{% else %}bg-red-500{% endif %} h-2 rounded-full transition-all"
+                                         style="width: {{ group.completion_rate }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Cumplimiento por Edad -->
+            {% if completion_data.age_range %}
+            <div class="mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">🎂 Cumplimiento por Rango de Edad</h3>
+                <p class="text-xs text-gray-600 mb-3">* El rango de edad se calcula automáticamente desde la fecha de nacimiento del empleado</p>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-purple-600">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Rango de Edad</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Programados</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Completados</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Pendientes</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Cumplimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for group in completion_data.age_range %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                                <td class="px-6 py-4 text-center text-indigo-700 font-medium">{{ group.programmed }}</td>
+                                <td class="px-6 py-4 text-center text-green-700 font-medium">{{ group.completed }}</td>
+                                <td class="px-6 py-4 text-center text-yellow-700 font-medium">{{ group.pending }}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold {% if group.completion_rate >= 80 %}bg-green-100 text-green-800{% elif group.completion_rate >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        {{ group.completion_rate|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Cumplimiento por Área -->
+            {% if completion_data.work_area %}
+            <div class="mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">💼 Cumplimiento por Área de Trabajo</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-orange-600">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Área</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Programados</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Completados</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Pendientes</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Cumplimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for group in completion_data.work_area %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                                <td class="px-6 py-4 text-center text-indigo-700 font-medium">{{ group.programmed }}</td>
+                                <td class="px-6 py-4 text-center text-green-700 font-medium">{{ group.completed }}</td>
+                                <td class="px-6 py-4 text-center text-yellow-700 font-medium">{{ group.pending }}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold {% if group.completion_rate >= 80 %}bg-green-100 text-green-800{% elif group.completion_rate >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        {{ group.completion_rate|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Cumplimiento por Antigüedad/Experiencia -->
+            {% if completion_data.experience_range %}
+            <div class="mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">⏱️ Cumplimiento por Antigüedad</h3>
+                <p class="text-xs text-gray-600 mb-3">* El rango de antigüedad se calcula automáticamente desde los años de experiencia del empleado</p>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-green-600">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Rango de Antigüedad</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Programados</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Completados</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Pendientes</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Cumplimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for group in completion_data.experience_range %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                                <td class="px-6 py-4 text-center text-indigo-700 font-medium">{{ group.programmed }}</td>
+                                <td class="px-6 py-4 text-center text-green-700 font-medium">{{ group.completed }}</td>
+                                <td class="px-6 py-4 text-center text-yellow-700 font-medium">{{ group.pending }}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold {% if group.completion_rate >= 80 %}bg-green-100 text-green-800{% elif group.completion_rate >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                        {{ group.completion_rate|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Mensaje informativo -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                <div class="flex items-start">
+                    <svg class="w-6 h-6 text-blue-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="text-sm text-blue-700">
+                        <p class="font-semibold mb-1">Nota sobre la confidencialidad</p>
+                        <p>Los datos de cumplimiento mostrados son agregados y permiten al empleador identificar áreas que requieren seguimiento para completar las evaluaciones programadas. Las evaluaciones individuales permanecen anónimas para proteger la privacidad de los empleados.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========== TAB: GÉNERO ========== -->
+    <div id="content-gender" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">👥 Análisis por Género</h2>
+            <p class="text-sm text-gray-600 mb-6">Distribución de niveles de riesgo psicosocial según el género de los participantes</p>
+            
+            {% if demographic_data.gender %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {% for group in demographic_data.gender %}
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-indigo-200">
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">{{ group.label }}</h3>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 400px;">
+                        <canvas id="chart-gender-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-indigo-600">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Género</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.gender %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recomendaciones por Grupo de Género -->
+            <div class="mt-8 space-y-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Plan de Acción por Grupo</h3>
+                {% for group in demographic_data.gender %}
+                {% if group.recommendations %}
+                <details class="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200">
+                    <summary class="cursor-pointer px-5 py-4 font-semibold text-slate-800 hover:bg-indigo-100 rounded-lg transition-colors">
+                        🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                    </summary>
+                    <div class="px-5 pb-4 space-y-4">
+                        {% for dim_name, rec_data in group.recommendations.items %}
+                        <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                </span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                {% for recommendation in rec_data.recommendations %}
+                                <li class="flex items-start">
+                                    <span class="text-blue-800 mr-2 mt-0.5">•</span>
+                                    <span>{{ recommendation }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-700">
+                <p>No hay datos de género disponibles para este período</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ========== TAB: EDAD ========== -->
+    <div id="content-age" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">🎂 Análisis por Rango de Edad</h2>
+            <p class="text-sm text-gray-600 mb-6">Distribución de niveles de riesgo psicosocial según el rango de edad de los participantes</p>
+            
+            {% if demographic_data.age_range %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                {% for group in demographic_data.age_range %}
+                <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+                    <h3 class="text-xl font-bold text-purple-900 mb-2">{{ group.label }}</h3>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 350px;">
+                        <canvas id="chart-age-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-purple-600">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Rango de Edad</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.age_range %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recomendaciones por Grupo de Edad -->
+            <div class="mt-8 space-y-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Plan de Acción por Grupo</h3>
+                {% for group in demographic_data.age_range %}
+                {% if group.recommendations %}
+                <details class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                    <summary class="cursor-pointer px-5 py-4 font-semibold text-purple-900 hover:bg-purple-100 rounded-lg transition-colors">
+                        🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                    </summary>
+                    <div class="px-5 pb-4 space-y-4">
+                        {% for dim_name, rec_data in group.recommendations.items %}
+                        <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                </span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                {% for recommendation in rec_data.recommendations %}
+                                <li class="flex items-start">
+                                    <span class="text-purple-600 mr-2 mt-0.5">•</span>
+                                    <span>{{ recommendation }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-700">
+                <p>No hay datos de edad disponibles para este período</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ========== TAB: ÁREA ========== -->
+    <div id="content-area" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">💼 Análisis por Área de Trabajo</h2>
+            <p class="text-sm text-gray-600 mb-6">Distribución de niveles de riesgo psicosocial según el área de trabajo</p>
+            
+            {% if demographic_data.work_area %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                {% for group in demographic_data.work_area %}
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
+                    <h3 class="text-xl font-bold text-green-900 mb-2">{{ group.label }}</h3>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 350px;">
+                        <canvas id="chart-area-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-green-600">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Área de Trabajo</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.work_area %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recomendaciones por Área de Trabajo -->
+            <div class="mt-8 space-y-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Plan de Acción por Área</h3>
+                {% for group in demographic_data.work_area %}
+                {% if group.recommendations %}
+                <details class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
+                    <summary class="cursor-pointer px-5 py-4 font-semibold text-orange-900 hover:bg-orange-100 rounded-lg transition-colors">
+                        🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                    </summary>
+                    <div class="px-5 pb-4 space-y-4">
+                        {% for dim_name, rec_data in group.recommendations.items %}
+                        <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                </span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                {% for recommendation in rec_data.recommendations %}
+                                <li class="flex items-start">
+                                    <span class="text-orange-600 mr-2 mt-0.5">•</span>
+                                    <span>{{ recommendation }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-700">
+                <p>No hay datos de área de trabajo disponibles para este período</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ========== TAB: EDUCACIÓN ========== -->
+    <div id="content-education" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">🎓 Análisis por Nivel Educativo</h2>
+            <p class="text-sm text-gray-600 mb-6">Distribución de niveles de riesgo psicosocial según el nivel de educación</p>
+            
+            {% if demographic_data.education_level %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                {% for group in demographic_data.education_level %}
+                <div class="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg p-6 border border-yellow-200">
+                    <h3 class="text-xl font-bold text-yellow-900 mb-2">{{ group.label }}</h3>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 350px;">
+                        <canvas id="chart-education-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-amber-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Nivel Educativo</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.education_level %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recomendaciones por Nivel Educativo -->
+            <div class="mt-8 space-y-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Plan de Acción por Nivel Educativo</h3>
+                {% for group in demographic_data.education_level %}
+                {% if group.recommendations %}
+                <details class="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border border-amber-300">
+                    <summary class="cursor-pointer px-5 py-4 font-semibold text-amber-900 hover:bg-amber-100 rounded-lg transition-colors">
+                        🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                    </summary>
+                    <div class="px-5 pb-4 space-y-4">
+                        {% for dim_name, rec_data in group.recommendations.items %}
+                        <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                </span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                {% for recommendation in rec_data.recommendations %}
+                                <li class="flex items-start">
+                                    <span class="text-amber-600 mr-2 mt-0.5">•</span>
+                                    <span>{{ recommendation }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-700">
+                <p>No hay datos de nivel educativo disponibles para este período</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ========== TAB: ANTIGÜEDAD ========== -->
+    <div id="content-experience" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">⏱️ Análisis por Antigüedad</h2>
+            <p class="text-sm text-gray-600 mb-6">Distribución de niveles de riesgo psicosocial según la antigüedad en la empresa</p>
+            
+            {% if demographic_data.experience_range %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                {% for group in demographic_data.experience_range %}
+                <div class="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-6 border border-orange-200">
+                    <h3 class="text-xl font-bold text-orange-900 mb-2">{{ group.label }}</h3>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 350px;">
+                        <canvas id="chart-experience-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-orange-600">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Antigüedad</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.experience_range %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recomendaciones por Antigüedad -->
+            <div class="mt-8 space-y-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Plan de Acción por Antigüedad</h3>
+                {% for group in demographic_data.experience_range %}
+                {% if group.recommendations %}
+                <details class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <summary class="cursor-pointer px-5 py-4 font-semibold text-green-900 hover:bg-green-100 rounded-lg transition-colors">
+                        🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                    </summary>
+                    <div class="px-5 pb-4 space-y-4">
+                        {% for dim_name, rec_data in group.recommendations.items %}
+                        <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                </span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                {% for recommendation in rec_data.recommendations %}
+                                <li class="flex items-start">
+                                    <span class="text-green-600 mr-2 mt-0.5">•</span>
+                                    <span>{{ recommendation }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-700">
+                <p>No hay datos de antigüedad disponibles para este período</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ========== TAB: ETNIA ========== -->
+    <div id="content-ethnicity" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">🌍 Análisis por Etnia</h2>
+            <p class="text-sm text-gray-600 mb-6">Distribución de niveles de riesgo psicosocial según la auto-identificación étnica</p>
+            
+            {% if demographic_data.ethnicity %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                {% for group in demographic_data.ethnicity %}
+                <div class="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg p-6 border border-cyan-200">
+                    <h3 class="text-xl font-bold text-cyan-900 mb-2">{{ group.label }}</h3>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 350px;">
+                        <canvas id="chart-ethnicity-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-cyan-600">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Etnia</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.ethnicity %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recomendaciones por Etnia -->
+            <div class="mt-8 space-y-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Plan de Acción por Grupo Étnico</h3>
+                {% for group in demographic_data.ethnicity %}
+                {% if group.recommendations %}
+                <details class="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg border border-cyan-200">
+                    <summary class="cursor-pointer px-5 py-4 font-semibold text-cyan-900 hover:bg-cyan-100 rounded-lg transition-colors">
+                        🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                    </summary>
+                    <div class="px-5 pb-4 space-y-4">
+                        {% for dim_name, rec_data in group.recommendations.items %}
+                        <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                </span>
+                            </div>
+                            <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                {% for recommendation in rec_data.recommendations %}
+                                <li class="flex items-start">
+                                    <span class="text-cyan-600 mr-2 mt-0.5">•</span>
+                                    <span>{{ recommendation }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-slate-700">
+                <p>No hay datos de etnia disponibles para este período</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ========== TAB: UBICACIÓN ========== -->
+    <div id="content-location" class="tab-content hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">📍 Análisis por Ubicación Geográfica</h2>
+            <p class="text-sm text-gray-600 mb-6">Distribución de niveles de riesgo psicosocial según la ubicación geográfica</p>
+            
+            {% if demographic_data.province %}
+            <h3 class="text-xl font-semibold text-slate-700 mb-4">Por Provincia</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                {% for group in demographic_data.province %}
+                <div class="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg p-6 border border-teal-200">
+                    <h4 class="text-lg font-bold text-teal-900 mb-2">{{ group.label }}</h4>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 300px;">
+                        <canvas id="chart-province-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa por Provincia -->
+            <div class="overflow-x-auto mb-8">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-teal-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Provincia</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.province %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            
+            {% if demographic_data.city %}
+            <h3 class="text-xl font-semibold text-slate-700 mb-4">Por Ciudad</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+                {% for group in demographic_data.city %}
+                <div class="bg-gradient-to-br from-slate-50 to-zinc-50 rounded-lg p-6 border border-slate-200">
+                    <h4 class="text-lg font-bold text-slate-900 mb-2">{{ group.label }}</h4>
+                    <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                    
+                    <div class="relative" style="height: 300px;">
+                        <canvas id="chart-city-{{ forloop.counter }}"></canvas>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Tabla Comparativa por Ciudad -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-slate-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white uppercase">Ciudad</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">Participantes</th>
+                            {% for dim in all_dimensions %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-white uppercase">{{ dim.name|truncatewords:2 }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for group in demographic_data.city %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-semibold text-slate-900">{{ group.label }}</td>
+                            <td class="px-6 py-4 text-center text-slate-700">{{ group.count }}</td>
+                            {% for dim in all_dimensions %}
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-xs space-y-1">
+                                    <div class="text-green-700 font-semibold">B: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo' }}%</div>
+                                    <div class="text-yellow-700 font-semibold">M: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio' }}%</div>
+                                    <div class="text-red-700 font-semibold">A: {{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto' }}%</div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Recomendaciones por Ubicación -->
+            <div class="mt-8 space-y-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Plan de Acción por Ubicación</h3>
+                
+                {% if demographic_data.province %}
+                <div class="mb-6">
+                    <h4 class="text-lg font-bold text-slate-700 mb-3">Por Provincia</h4>
+                    {% for group in demographic_data.province %}
+                    {% if group.recommendations %}
+                    <details class="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-200 mb-3">
+                        <summary class="cursor-pointer px-5 py-4 font-semibold text-teal-900 hover:bg-teal-100 rounded-lg transition-colors">
+                            🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                        </summary>
+                        <div class="px-5 pb-4 space-y-4">
+                            {% for dim_name, rec_data in group.recommendations.items %}
+                            <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                    <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                    </span>
+                                </div>
+                                <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                    {% for recommendation in rec_data.recommendations %}
+                                    <li class="flex items-start">
+                                        <span class="text-teal-600 mr-2 mt-0.5">•</span>
+                                        <span>{{ recommendation }}</span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% if demographic_data.city %}
+                <div>
+                    <h4 class="text-lg font-bold text-slate-700 mb-3">Por Ciudad</h4>
+                    {% for group in demographic_data.city %}
+                    {% if group.recommendations %}
+                    <details class="bg-gradient-to-r from-slate-50 to-gray-50 rounded-lg border border-slate-200 mb-3">
+                        <summary class="cursor-pointer px-5 py-4 font-semibold text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                            🎯 {{ group.label }} ({{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}) - {{ group.recommendations|length }} dimensión(es) requieren atención
+                        </summary>
+                        <div class="px-5 pb-4 space-y-4">
+                            {% for dim_name, rec_data in group.recommendations.items %}
+                            <div class="bg-white rounded-lg p-4 border-l-4 {% if rec_data.level == 'ALTO' %}border-red-500{% else %}border-yellow-500{% endif %}">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h4 class="font-bold text-slate-900">{{ dim_name }}</h4>
+                                    <span class="px-3 py-1 rounded-full text-xs font-semibold {% if rec_data.level == 'ALTO' %}bg-red-100 text-red-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        RIESGO {{ rec_data.level }}: {{ rec_data.percentage }}% ({{ rec_data.count }} {% if rec_data.count == 1 %}persona{% else %}personas{% endif %})
+                                    </span>
+                                </div>
+                                <ul class="space-y-2 text-sm text-slate-700 leading-snug">
+                                    {% for recommendation in rec_data.recommendations %}
+                                    <li class="flex items-start">
+                                        <span class="text-slate-600 mr-2 mt-0.5">•</span>
+                                        <span>{{ recommendation }}</span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if not demographic_data.province and not demographic_data.city %}
+            <div class="text-center py-12 text-slate-700">
+                <p>No hay datos de ubicación disponibles para este período</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+</div>
+
+<!-- Chart.js y Plugin de Datalabels -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DOM CARGADO ===');
+    
+    // Datos del gráfico desde Django
+    const dimensionData = [
+        {% for dim_data in dimension_stats_list %}
+        {% with stats=dim_data.stats %}
+        {
+            name: "{{ dim_data.name|escapejs }}",
+            bajo: parseFloat("{{ stats.porcentaje_bajo|default:'0' }}") || 0,
+            medio: parseFloat("{{ stats.porcentaje_medio|default:'0' }}") || 0,
+            alto: parseFloat("{{ stats.porcentaje_alto|default:'0' }}") || 0,
+            bajoCount: {{ stats.BAJO|default:0 }},
+            medioCount: {{ stats.MEDIO|default:0 }},
+            altoCount: {{ stats.ALTO|default:0 }}
+        }{% if not forloop.last %},{% endif %}
+        {% endwith %}
+        {% endfor %}
+    ];
+
+    console.log('Datos:', dimensionData);
+    console.log('Total dimensiones:', dimensionData.length);
+    console.log('Chart.js disponible:', typeof Chart !== 'undefined');
+    
+    const canvas = document.getElementById('adminDimensionsChart');
+    console.log('Canvas encontrado:', canvas !== null);
+
+    // Verificar que hay datos
+    if (dimensionData.length === 0) {
+        console.error('No hay datos');
+
+        const canvasContainer = document.querySelector('.relative[style*="height: 600px"]');
+        if (canvasContainer) {
+            canvasContainer.innerHTML = '<div class="flex items-center justify-center h-full text-slate-700"><p>No hay datos disponibles para mostrar el gráfico</p></div>';
+        }
+        return;
+    }
+
+    // Abreviar nombres de dimensiones para el eje Y
+    const dimensionLabels = dimensionData.map(d => {
+        // No abreviar para que se vean los nombres completos
+        return d.name;
+    });
+
+    // Crear el gráfico
+    console.log('Intentando crear gráfico...');
+    const ctx = document.getElementById('adminDimensionsChart').getContext('2d');
+    
+    try {
+        const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dimensionLabels,
+            datasets: [
+                {
+                    label: 'RIESGO BAJO',
+                    data: dimensionData.map(d => d.bajo),
+                    backgroundColor: '#10b981', // Verde
+                    borderColor: '#10b981',
+                    borderWidth: 1,
+                    datalabels: {
+                        formatter: function(value, context) {
+                            const count = dimensionData[context.dataIndex].bajoCount;
+                            return count > 0 ? count : '';
+                        }
+                    }
+                },
+                {
+                    label: 'RIESGO MEDIO',
+                    data: dimensionData.map(d => d.medio),
+                    backgroundColor: '#eab308', // Amarillo
+                    borderColor: '#eab308',
+                    borderWidth: 1,
+                    datalabels: {
+                        formatter: function(value, context) {
+                            const count = dimensionData[context.dataIndex].medioCount;
+                            return count > 0 ? count : '';
+                        }
+                    }
+                },
+                {
+                    label: 'RIESGO ALTO',
+                    data: dimensionData.map(d => d.alto),
+                    backgroundColor: '#ef4444', // Rojo
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    datalabels: {
+                        formatter: function(value, context) {
+                            const count = dimensionData[context.dataIndex].altoCount;
+                            return count > 0 ? count : '';
+                        }
+                    }
+                }
+            ]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            indexAxis: 'y', // Barras horizontales
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                datalabels: {
+                    color: '#ffffff',
+                    font: {
+                        weight: 'bold',
+                        size: 14
+                    },
+                    anchor: 'center',
+                    align: 'center',
+                    display: true
+                },
+                legend: {
+                    display: true,
+                    position: 'right',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const dataIndex = context.dataIndex;
+                            const dimension = dimensionData[dataIndex];
+                            const label = context.dataset.label;
+                            const percentage = context.parsed.x.toFixed(2);
+                            
+                            let count = 0;
+                            if (label === 'RIESGO BAJO') {
+                                count = dimension.bajoCount;
+                            } else if (label === 'RIESGO MEDIO') {
+                                count = dimension.medioCount;
+                            } else if (label === 'RIESGO ALTO') {
+                                count = dimension.altoCount;
+                            }
+                            
+                            return label + ': ' + percentage + '% (' + count + ' persona' + (count !== 1 ? 's' : '') + ')';
+                        },
+                        footer: function(tooltipItems) {
+                            let total = 0;
+                            let totalPersonas = 0;
+                            tooltipItems.forEach(function(item) {
+                                total += item.parsed.x;
+                                const dataIndex = item.dataIndex;
+                                const dimension = dimensionData[dataIndex];
+                                totalPersonas += dimension.bajoCount + dimension.medioCount + dimension.altoCount;
+                            });
+                            return 'Total: ' + total.toFixed(2) + '% (' + totalPersonas + ' evaluaciones)';
+                        }
+                    },
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 12
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        },
+                        font: {
+                            size: 11,
+                            weight: 'bold'
+                        },
+                        color: '#6b7280'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Porcentaje (%)',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    }
+                },
+                y: {
+                    stacked: true,
+                    ticks: {
+                        font: {
+                            size: 13,
+                            weight: '600'
+                        },
+                        color: '#1f2937',
+                        maxRotation: 0,
+                        minRotation: 0,
+                        padding: 5
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            animation: {
+                duration: 1500,
+                easing: 'easeInOutQuart'
+            }
+        }
+        });
+        console.log('Gráfico creado exitosamente');
+    } catch (error) {
+        console.error('Error al crear gráfico:', error);
+    }
+    
+    // =============================================
+    // SISTEMA DE PESTAÑAS
+    // =============================================
+    window.switchTab = function(tabName) {
+        // Ocultar todos los contenidos
+        const allContents = document.querySelectorAll('.tab-content');
+        allContents.forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        // Remover estilos activos de todos los botones
+        const allButtons = document.querySelectorAll('.tab-button');
+        allButtons.forEach(btn => {
+            btn.classList.remove('border-blue-500', 'text-blue-800');
+            btn.classList.add('border-transparent', 'text-slate-700');
+        });
+        
+        // Mostrar contenido seleccionado
+        const selectedContent = document.getElementById('content-' + tabName);
+        if (selectedContent) {
+            selectedContent.classList.remove('hidden');
+        }
+        
+        // Activar botón seleccionado
+        const selectedButton = document.getElementById('tab-' + tabName);
+        if (selectedButton) {
+            selectedButton.classList.remove('border-transparent', 'text-slate-700');
+            selectedButton.classList.add('border-blue-500', 'text-blue-800');
+        }
+        
+        // Trigger para redimensionar los gráficos de Chart.js si existen
+        window.dispatchEvent(new Event('resize'));
+    };
+    
+    // =============================================
+    // CREAR GRÁFICOS PARA CADA PESTAÑA DEMOGRÁFICA
+    // =============================================
+    
+    // Función auxiliar para serializar datos JSON
+    function parseDemographicData(jsonString) {
+        try {
+            if (typeof jsonString === 'string') {
+                return JSON.parse(jsonString);
+            }
+            return jsonString;
+        } catch (e) {
+            console.error('Error parsing JSON:', e);
+            return [];
+        }
+    }
+    
+    // Crear gráficos para GÉNERO
+    {% if demographic_data.gender %}
+        {% for group in demographic_data.gender %}
+        (function() {
+            const canvas = document.getElementById('chart-gender-{{ forloop.counter }}');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            console.log('{{ group.label }} - Género Chart Data:');
+            console.log('bajoData:', bajoData);
+            console.log('medioData:', medioData);
+            console.log('altoData:', altoData);
+            console.log('bajoCount:', bajoCount);
+            console.log('medioCount:', medioCount);
+            console.log('altoCount:', altoCount);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { 
+                            label: 'RIESGO BAJO', 
+                            data: bajoData, 
+                            backgroundColor: '#10b981', 
+                            borderColor: '#10b981', 
+                            borderWidth: 1,
+                            datalabels: {
+                                formatter: function(value, context) {
+                                    const count = bajoCount[context.dataIndex];
+                                    return count > 0 ? count : '';
+                                }
+                            }
+                        },
+                        { 
+                            label: 'RIESGO MEDIO', 
+                            data: medioData, 
+                            backgroundColor: '#eab308', 
+                            borderColor: '#eab308', 
+                            borderWidth: 1,
+                            datalabels: {
+                                formatter: function(value, context) {
+                                    const count = medioCount[context.dataIndex];
+                                    return count > 0 ? count : '';
+                                }
+                            }
+                        },
+                        { 
+                            label: 'RIESGO ALTO', 
+                            data: altoData, 
+                            backgroundColor: '#ef4444', 
+                            borderColor: '#ef4444', 
+                            borderWidth: 1,
+                            datalabels: {
+                                formatter: function(value, context) {
+                                    const count = altoCount[context.dataIndex];
+                                    return count > 0 ? count : '';
+                                }
+                            }
+                        }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: '#ffffff',
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                            display: true
+                        },
+                        legend: { display: true, position: 'top', labels: { usePointStyle: true, padding: 10, font: { size: 10, weight: 'bold' } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const idx = context.dataIndex;
+                                    const lbl = context.dataset.label;
+                                    const pct = context.parsed.x.toFixed(2);
+                                    let cnt = 0;
+                                    if (lbl === 'RIESGO BAJO') cnt = bajoCount[idx];
+                                    else if (lbl === 'RIESGO MEDIO') cnt = medioCount[idx];
+                                    else if (lbl === 'RIESGO ALTO') cnt = altoCount[idx];
+                                    return `${lbl}: ${pct}% (${cnt} personas)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { stacked: true, beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%', font: { size: 9 } }, grid: { display: true, color: '#e5e7eb' } },
+                        y: { stacked: true, ticks: { font: { size: 10, weight: '600' }, maxRotation: 0, minRotation: 0, callback: function(v, i) { const l = this.getLabelForValue(v); return l.length > 25 ? l.substring(0, 22) + '...' : l; } }, grid: { display: false } }
+                    },
+                    animation: { duration: 1000 }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    // Crear gráficos para EDAD
+    {% if demographic_data.age_range %}
+        {% for group in demographic_data.age_range %}
+        (function() {
+            const canvas = document.getElementById('chart-age-{{ forloop.counter }}');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                        { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                        { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                        y: { stacked: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    // Crear gráficos para ÁREA
+    {% if demographic_data.work_area %}
+        {% for group in demographic_data.work_area %}
+        (function() {
+            const canvas = document.getElementById('chart-area-{{ forloop.counter }}');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                        { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                        { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                        y: { stacked: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    // Crear gráficos para EDUCACIÓN
+    {% if demographic_data.education_level %}
+        {% for group in demographic_data.education_level %}
+        (function() {
+            const canvas = document.getElementById('chart-education-{{ forloop.counter }}');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                        { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                        { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                        y: { stacked: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    // Crear gráficos para EXPERIENCIA
+    {% if demographic_data.experience_range %}
+        {% for group in demographic_data.experience_range %}
+        (function() {
+            const canvas = document.getElementById('chart-experience-{{ forloop.counter }}');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                        { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                        { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                        y: { stacked: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    // Crear gráficos para ETNIA
+    {% if demographic_data.ethnicity %}
+        {% for group in demographic_data.ethnicity %}
+        (function() {
+            const canvas = document.getElementById('chart-ethnicity-{{ forloop.counter }}');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                        { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                        { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                        y: { stacked: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    // Crear gráficos para PROVINCIA
+    {% if demographic_data.province %}
+        {% for group in demographic_data.province %}
+        (function() {
+            const canvas = document.getElementById('chart-province-{{ forloop.counter }}');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                        { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                        { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                        y: { stacked: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    // Crear gráficos para CIUDAD
+    {% if demographic_data.city %}
+        {% for group in demographic_data.city %}
+        (function() {
+            const canvas = document.getElementById('chart-city-{{ forloop.counter }}');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dimensionNames = [{% for dim in all_dimensions %}"{{ dim.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_bajo'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_medio'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoData = [{% for dim in all_dimensions %}parseFloat("{{ group.dimension_risks|get_item:dim.name|get_item:'porcentaje_alto'|default:0 }}") || 0{% if not forloop.last %},{% endif %}{% endfor %}];
+            const bajoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'BAJO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const medioCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'MEDIO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            const altoCount = [{% for dim in all_dimensions %}{{ group.dimension_risks|get_item:dim.name|get_item:'ALTO'|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dimensionNames,
+                    datasets: [
+                        { label: 'BAJO', data: bajoData, backgroundColor: '#10b981', datalabels: { formatter: (v, c) => bajoCount[c.dataIndex] > 0 ? bajoCount[c.dataIndex] : '' } },
+                        { label: 'MEDIO', data: medioData, backgroundColor: '#eab308', datalabels: { formatter: (v, c) => medioCount[c.dataIndex] > 0 ? medioCount[c.dataIndex] : '' } },
+                        { label: 'ALTO', data: altoData, backgroundColor: '#ef4444', datalabels: { formatter: (v, c) => altoCount[c.dataIndex] > 0 ? altoCount[c.dataIndex] : '' } }
+                    ]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center' }, legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { stacked: true, max: 100, ticks: { callback: (v) => v + '%' } },
+                        y: { stacked: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        })();
+        {% endfor %}
+    {% endif %}
+    
+    console.log('=== Gráficos demográficos completados ===');
+    
+    // ==================== FUNCIONALIDAD DE TABS ====================
+    window.switchTab = function(tabName) {
+        // Ocultar todos los contenidos
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => content.classList.add('hidden'));
+        
+        // Quitar estilos activos de todos los botones
+        const buttons = document.querySelectorAll('.tab-button');
+        buttons.forEach(btn => {
+            btn.classList.remove('border-blue-500', 'text-blue-800');
+            btn.classList.add('border-transparent', 'text-slate-700');
+        });
+        
+        // Mostrar el contenido seleccionado
+        const selectedContent = document.getElementById(`content-${tabName}`);
+        if (selectedContent) {
+            selectedContent.classList.remove('hidden');
+        }
+        
+        // Activar el botón seleccionado
+        const selectedButton = document.getElementById(`tab-${tabName}`);
+        if (selectedButton) {
+            selectedButton.classList.remove('border-transparent', 'text-slate-700');
+            selectedButton.classList.add('border-blue-500', 'text-blue-800');
+        }
+    };
+});
+</script>
+{% endblock %}

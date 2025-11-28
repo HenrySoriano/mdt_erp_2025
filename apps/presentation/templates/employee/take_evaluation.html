@@ -1,0 +1,365 @@
+﻿{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Evaluación {{ evaluation.year }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800">Evaluación de Riesgo Psicosocial {{ evaluation.year }}</h1>
+                <p class="text-slate-600 mt-2">Responde todas las preguntas con sinceridad. Tus respuestas son confidenciales.</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-slate-500">Progreso</p>
+                <p class="text-2xl font-bold text-blue-600">{{ completion_percentage|floatformat:0 }}%</p>
+            </div>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-3 mb-8">
+            <div class="bg-gradient-to-r from-blue-800 to-blue-900 h-3 rounded-full transition-all duration-500" style="width: {{ completion_percentage }}%"></div>
+        </div>
+    </div>
+    <form method="post" id="evaluationForm" {% if is_superuser_view and not is_empty_preview %}onsubmit="return false;"{% elif is_superuser_view and is_empty_preview %}onsubmit="event.preventDefault(); return false;"{% endif %}>
+        {% csrf_token %}
+        
+        <!-- Sección de Datos Generales -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 border-b-2 border-blue-800 pb-3">📋 Datos Generales</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- A. Fecha -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">A. Fecha</label>
+                    <input type="date" name="evaluation_date" value="{% if evaluation.evaluation_date %}{{ evaluation.evaluation_date|date:'Y-m-d' }}{% else %}{{ evaluation.date_started|date:'Y-m-d' }}{% endif %}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}readonly{% else %}required{% endif %}>
+                </div>
+                
+                <!-- B. Provincia -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">B. Provincia</label>
+                    <select name="province" id="province" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione una provincia</option>
+                        {% for code, name in provincias %}
+                        <option value="{{ name }}" {% if evaluation.province == name %}selected{% elif not evaluation.province and employee.province == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- C. Ciudad -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">C. Ciudad</label>
+                    <select name="city" id="city" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione una ciudad</option>
+                        {% for ciudad in ciudades %}
+                        <option value="{{ ciudad }}" {% if evaluation.city == ciudad %}selected{% elif not evaluation.city and employee.city == ciudad %}selected{% endif %}>{{ ciudad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- D. Área de trabajo -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">D. Área de trabajo</label>
+                    <select name="work_area" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione un área</option>
+                        <option value="ADMINISTRATIVA" {% if evaluation.work_area == 'ADMINISTRATIVA' %}selected{% elif not evaluation.work_area and employee.area == 'Administrativa' %}selected{% endif %}>Administrativa</option>
+                        <option value="OPERATIVA" {% if evaluation.work_area == 'OPERATIVA' %}selected{% elif not evaluation.work_area and employee.area == 'Operativa' %}selected{% endif %}>Operativa</option>
+                        <option value="COMERCIAL" {% if evaluation.work_area == 'COMERCIAL' %}selected{% elif not evaluation.work_area and employee.area == 'Comercial' %}selected{% endif %}>Comercial</option>
+                        <option value="LOGISTICA" {% if evaluation.work_area == 'LOGISTICA' %}selected{% elif not evaluation.work_area and employee.area == 'Logística' %}selected{% endif %}>Logística</option>
+                        <option value="PRODUCCION" {% if evaluation.work_area == 'PRODUCCION' %}selected{% elif not evaluation.work_area and employee.area == 'Producción' %}selected{% endif %}>Producción</option>
+                        <option value="TRANSFORMACION" {% if evaluation.work_area == 'TRANSFORMACION' %}selected{% elif not evaluation.work_area and employee.area == 'Transformación' %}selected{% endif %}>Transformación</option>
+                        <option value="SOPORTE" {% if evaluation.work_area == 'SOPORTE' %}selected{% elif not evaluation.work_area and employee.area == 'Soporte' %}selected{% endif %}>Soporte</option>
+                        <option value="TECNOLOGIA_INNOVACION" {% if evaluation.work_area == 'TECNOLOGIA_INNOVACION' %}selected{% elif not evaluation.work_area and employee.area == 'Tecnología e Innovación' %}selected{% endif %}>Tecnología e Innovación</option>
+                    </select>
+                </div>
+                
+                <!-- E. Nivel más alto de instrucción -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">E. Nivel más alto de instrucción</label>
+                    <select name="education_level" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione un nivel</option>
+                        <option value="NINGUNO" {% if evaluation.education_level == 'NINGUNO' %}selected{% endif %}>Ninguno</option>
+                        <option value="EDUCACION_BASICA" {% if evaluation.education_level == 'EDUCACION_BASICA' %}selected{% endif %}>Educación básica</option>
+                        <option value="EDUCACION_MEDIA" {% if evaluation.education_level == 'EDUCACION_MEDIA' %}selected{% endif %}>Educación media</option>
+                        <option value="BACHILLERATO" {% if evaluation.education_level == 'BACHILLERATO' %}selected{% endif %}>Bachillerato</option>
+                        <option value="TECNICO_TECNOLOGICO" {% if evaluation.education_level == 'TECNICO_TECNOLOGICO' %}selected{% endif %}>Técnico/Tecnológico</option>
+                        <option value="TERCER_NIVEL" {% if evaluation.education_level == 'TERCER_NIVEL' %}selected{% endif %}>Tercer Nivel</option>
+                        <option value="CUARTO_NIVEL" {% if evaluation.education_level == 'CUARTO_NIVEL' %}selected{% endif %}>Cuarto Nivel</option>
+                        <option value="OTRO" {% if evaluation.education_level == 'OTRO' %}selected{% endif %}>Otro</option>
+                    </select>
+                </div>
+                
+                <!-- F. Antigüedad -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">F. Antigüedad, años de experiencia dentro de la empresa</label>
+                    <select name="experience_range" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione un rango</option>
+                        <option value="0-2" {% if evaluation.experience_range == '0-2' %}selected{% elif not evaluation.experience_range and employee.years_of_experience <= 2 %}selected{% endif %}>0-2 años</option>
+                        <option value="3-10" {% if evaluation.experience_range == '3-10' %}selected{% elif not evaluation.experience_range and 3 <= employee.years_of_experience <= 10 %}selected{% endif %}>3-10 años</option>
+                        <option value="11-20" {% if evaluation.experience_range == '11-20' %}selected{% elif not evaluation.experience_range and 11 <= employee.years_of_experience <= 20 %}selected{% endif %}>11-20 años</option>
+                        <option value="21+" {% if evaluation.experience_range == '21+' %}selected{% elif not evaluation.experience_range and employee.years_of_experience >= 21 %}selected{% endif %}>Igual o superior a 21 años</option>
+                    </select>
+                </div>
+                
+                <!-- G. Edad del trabajador -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">G. Edad del trabajador o servidor</label>
+                    <select name="age_range" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione un rango</option>
+                        <option value="16-24" {% if evaluation.age_range == '16-24' %}selected{% elif not evaluation.age_range and 16 <= employee.age <= 24 %}selected{% endif %}>16-24 años</option>
+                        <option value="25-34" {% if evaluation.age_range == '25-34' %}selected{% elif not evaluation.age_range and 25 <= employee.age <= 34 %}selected{% endif %}>25-34 años</option>
+                        <option value="35-43" {% if evaluation.age_range == '35-43' %}selected{% elif not evaluation.age_range and 35 <= employee.age <= 43 %}selected{% endif %}>35-43 años</option>
+                        <option value="44-52" {% if evaluation.age_range == '44-52' %}selected{% elif not evaluation.age_range and 44 <= employee.age <= 52 %}selected{% endif %}>44-52 años</option>
+                        <option value="53+" {% if evaluation.age_range == '53+' %}selected{% elif not evaluation.age_range and employee.age >= 53 %}selected{% endif %}>Igual o superior a 53 años</option>
+                    </select>
+                </div>
+                
+                <!-- H. Auto-identificación étnica -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">H. Auto-identificación étnica</label>
+                    <select name="ethnicity" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione una opción</option>
+                        <option value="INDIGENA" {% if evaluation.ethnicity == 'INDIGENA' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'INDIGENA' %}selected{% endif %}>Indígena</option>
+                        <option value="AFRO_ECUATORIANO" {% if evaluation.ethnicity == 'AFRO_ECUATORIANO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'AFROECUATORIANO' %}selected{% endif %}>Afro-ecuatoriano</option>
+                        <option value="MESTIZO" {% if evaluation.ethnicity == 'MESTIZO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'MESTIZO' %}selected{% endif %}>Mestizo/a</option>
+                        <option value="MONTUBIO" {% if evaluation.ethnicity == 'MONTUBIO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'MONTUBIO' %}selected{% endif %}>Montubio/a</option>
+                        <option value="BLANCO" {% if evaluation.ethnicity == 'BLANCO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'BLANCO' %}selected{% endif %}>Blanco/a</option>
+                        <option value="OTRO" {% if evaluation.ethnicity == 'OTRO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'OTRO' %}selected{% endif %}>Otro</option>
+                    </select>
+                </div>
+                
+                <!-- I. Género -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">I. Género del trabajador o servidor</label>
+                    <select name="gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <option value="">Seleccione un género</option>
+                        <option value="M" {% if evaluation.gender == 'M' %}selected{% elif not evaluation.gender and employee.gender == 'M' %}selected{% endif %}>Masculino</option>
+                        <option value="F" {% if evaluation.gender == 'F' %}selected{% elif not evaluation.gender and employee.gender == 'F' %}selected{% endif %}>Femenino</option>
+                    </select>
+                </div>
+                
+                <!-- J. Empresa -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">J. Empresa</label>
+                    <input type="text" name="company_name" value="{{ evaluation.employee.company.name }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" readonly>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Preguntas de evaluación -->
+        <div class="bg-blue-50 rounded-xl p-6 mb-6">
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">📝 Preguntas de Evaluación</h2>
+            <p class="text-slate-600">Responde las siguientes 58 preguntas según tu experiencia en el trabajo.</p>
+        </div>
+        
+        <!-- Explicación de las opciones de respuesta -->
+        <div class="bg-gradient-to-r from-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-xl p-6 mb-6">
+            <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                ¿Cómo responder las preguntas?
+            </h3>
+            <p class="text-slate-700 mb-4">Para cada pregunta, selecciona el nivel de acuerdo que mejor refleje tu experiencia personal en el trabajo. Las opciones significan:</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-lg p-4 border-2 border-slate-300 shadow-sm">
+                    <div class="flex items-center justify-center mb-2">
+                        <span class="bg-red-100 text-red-800 text-lg font-bold px-3 py-1 rounded-full">1</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-800 mb-1">En desacuerdo</p>
+                    <p class="text-xs text-slate-600">La situación descrita <strong>no ocurre</strong> o <strong>nunca</strong> es así en tu experiencia laboral.</p>
+                </div>
+                <div class="bg-white rounded-lg p-4 border-2 border-slate-300 shadow-sm">
+                    <div class="flex items-center justify-center mb-2">
+                        <span class="bg-yellow-100 text-yellow-800 text-lg font-bold px-3 py-1 rounded-full">2</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-800 mb-1">Poco de acuerdo</p>
+                    <p class="text-xs text-slate-600">La situación ocurre <strong>raramente</strong> o <strong>pocas veces</strong> en tu trabajo.</p>
+                </div>
+                <div class="bg-white rounded-lg p-4 border-2 border-slate-300 shadow-sm">
+                    <div class="flex items-center justify-center mb-2">
+                        <span class="bg-orange-100 text-orange-800 text-lg font-bold px-3 py-1 rounded-full">3</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-800 mb-1">Parcialmente de acuerdo</p>
+                    <p class="text-xs text-slate-600">La situación ocurre <strong>a veces</strong> o <strong>ocasionalmente</strong> en tu ambiente laboral.</p>
+                </div>
+                <div class="bg-white rounded-lg p-4 border-2 border-slate-300 shadow-sm">
+                    <div class="flex items-center justify-center mb-2">
+                        <span class="bg-green-100 text-green-800 text-lg font-bold px-3 py-1 rounded-full">4</span>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-800 mb-1">Completamente de acuerdo</p>
+                    <p class="text-xs text-slate-600">La situación descrita es <strong>siempre</strong> o <strong>casi siempre</strong> así en tu trabajo.</p>
+                </div>
+            </div>
+            <div class="mt-4 p-3 bg-blue-100 border-l-4 border-blue-800 rounded">
+                <p class="text-sm text-blue-900">
+                    <strong>💡 Consejo:</strong> Responde con sinceridad según tu experiencia real. No hay respuestas correctas o incorrectas. 
+                    Si tienes dudas sobre alguna pregunta, puedes hacer clic en el botón <strong>"📖 Explicación"</strong> para ver más detalles y ejemplos.
+                </p>
+            </div>
+        </div>
+        
+        <div class="space-y-6">
+            {% for question in questions %}
+            <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition">
+                <div class="mb-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1">
+                            <span class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full mb-2">Pregunta {{ question.number }} de 58</span>
+                            <p class="text-lg text-slate-800 font-medium">{{ question.text }}</p>
+                        </div>
+                        <button type="button" onclick="openExplanationModal({{ question.number }})" class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow-sm" title="Ver explicación de la pregunta">📖 Explicación</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <label class="relative {% if not is_superuser_view or is_empty_preview %}cursor-pointer{% else %}cursor-not-allowed{% endif %}">
+                        <input type="radio" name="question_{{ question.id }}" value="1" {% if existing_responses|get_item:question.id == 1 %}checked{% endif %} class="peer sr-only" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <div class="border-2 border-slate-300 rounded-lg p-4 text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-800 hover:border-blue-400 transition">
+                            <p class="text-sm font-semibold">En desacuerdo</p>
+                            <p class="text-xs text-slate-500 mt-1">(1)</p>
+                        </div>
+                    </label>
+                    <label class="relative {% if not is_superuser_view or is_empty_preview %}cursor-pointer{% else %}cursor-not-allowed{% endif %}">
+                        <input type="radio" name="question_{{ question.id }}" value="2" {% if existing_responses|get_item:question.id == 2 %}checked{% endif %} class="peer sr-only" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <div class="border-2 border-slate-300 rounded-lg p-4 text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-800 hover:border-blue-400 transition">
+                            <p class="text-sm font-semibold">Poco de acuerdo</p>
+                            <p class="text-xs text-slate-500 mt-1">(2)</p>
+                        </div>
+                    </label>
+                    <label class="relative {% if not is_superuser_view or is_empty_preview %}cursor-pointer{% else %}cursor-not-allowed{% endif %}">
+                        <input type="radio" name="question_{{ question.id }}" value="3" {% if existing_responses|get_item:question.id == 3 %}checked{% endif %} class="peer sr-only" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <div class="border-2 border-slate-300 rounded-lg p-4 text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-800 hover:border-blue-400 transition">
+                            <p class="text-sm font-semibold">Parcialmente de acuerdo</p>
+                            <p class="text-xs text-slate-500 mt-1">(3)</p>
+                        </div>
+                    </label>
+                    <label class="relative {% if not is_superuser_view or is_empty_preview %}cursor-pointer{% else %}cursor-not-allowed{% endif %}">
+                        <input type="radio" name="question_{{ question.id }}" value="4" {% if existing_responses|get_item:question.id == 4 %}checked{% endif %} class="peer sr-only" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
+                        <div class="border-2 border-slate-300 rounded-lg p-4 text-center peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:text-blue-800 hover:border-blue-400 transition">
+                            <p class="text-sm font-semibold">Completamente de acuerdo</p>
+                            <p class="text-xs text-slate-500 mt-1">(4)</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-8 sticky bottom-4">
+            <div class="flex justify-between items-center">
+                <a href="{% url 'employee_dashboard' %}" class="text-slate-600 hover:text-slate-800 font-medium transition">← Volver al Dashboard</a>
+                <div class="space-x-4">
+                    {% if is_superuser_view %}
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded mb-4">
+                        <p class="text-yellow-800 text-sm font-medium">
+                            {% if is_empty_preview %}
+                            👁️ Vista de Revisión - Cuestionario Vacío (Modo Superusuario) - Los cambios no se guardarán
+                            {% else %}
+                            👁️ Vista de solo lectura - Modo Superusuario
+                            {% endif %}
+                        </p>
+                    </div>
+                    <a href="{% url 'superuser_dashboard' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition inline-block">← Volver al Dashboard</a>
+                    {% if is_empty_preview %}
+                    <button type="button" onclick="alert('Esta es una vista de revisión. Los cambios no se guardarán.')" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition ml-3">💾 Simular Guardar</button>
+                    {% endif %}
+                    {% else %}
+                    <button type="submit" name="action" value="save_draft" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition">💾 Guardar Borrador</button>
+                    <button type="submit" name="action" value="submit" class="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition transform hover:scale-105" onclick="return confirm('¿Estás seguro de enviar la evaluación? No podrás modificarla después.')">✓ Enviar Evaluación</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<div id="explanationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-slate-800">Explicación de la Pregunta</h3>
+                <button onclick="closeExplanationModal()" class="text-slate-500 hover:text-slate-700 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <div id="modalContent" class="prose max-w-none"></div>
+        </div>
+        <div class="p-6 border-t border-gray-200 bg-gray-50">
+            <button onclick="closeExplanationModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition">Cerrar</button>
+        </div>
+    </div>
+</div>
+<script>
+const explanations = {
+{% for question in questions %}
+{{ question.number }}: {
+    text: "{{ question.text|escapejs }}",
+    explanation: "{{ question.explanation|default:'Esta pregunta evalúa aspectos importantes del ambiente laboral. Responde según tu experiencia personal en el trabajo.'|escapejs }}"
+}{% if not forloop.last %},{% endif %}
+{% endfor %}
+};
+
+function openExplanationModal(n) {
+    const m = document.getElementById('explanationModal');
+    const c = document.getElementById('modalContent');
+    const d = explanations[n];
+    c.innerHTML = `<div class="mb-4"><span class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full mb-2">Pregunta ${n} de 58</span><p class="text-lg font-semibold text-slate-800 mt-2">${d.text}</p></div><div class="bg-blue-50 border-l-4 border-blue-800 p-4 rounded"><h4 class="font-semibold text-blue-900 mb-2">💡 Explicación:</h4><p class="text-slate-700 whitespace-pre-line">${d.explanation}</p></div>`;
+    m.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeExplanationModal() {
+    document.getElementById('explanationModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+document.getElementById('explanationModal').addEventListener('click', function(e) {
+    if (e.target === this) closeExplanationModal();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeExplanationModal();
+});
+
+// Datos de ciudades por provincia
+const ciudadesPorProvincia = {
+{% for provincia, ciudades_list in ciudades_por_provincia.items %}
+    "{{ provincia }}": [{% for ciudad in ciudades_list %}"{{ ciudad }}"{% if not forloop.last %}, {% endif %}{% endfor %}]{% if not forloop.last %},{% endif %}
+{% endfor %}
+};
+
+// Función para actualizar ciudades según la provincia
+function actualizarCiudades() {
+    const provinciaSelect = document.getElementById('province');
+    const provincia = provinciaSelect.value;
+    const citySelect = document.getElementById('city');
+    const ciudadActual = citySelect.value;
+    const ciudades = ciudadesPorProvincia[provincia] || [];
+    
+    // Limpiar opciones actuales
+    citySelect.innerHTML = '<option value="">Seleccione una ciudad</option>';
+    
+    // Agregar ciudades de la provincia seleccionada
+    ciudades.forEach(function(ciudad) {
+        const option = document.createElement('option');
+        option.value = ciudad;
+        option.textContent = ciudad;
+        if (ciudad === ciudadActual) {
+            option.selected = true;
+        }
+        citySelect.appendChild(option);
+    });
+}
+
+// Actualizar ciudades cuando se selecciona una provincia
+document.getElementById('province').addEventListener('change', actualizarCiudades);
+
+// Inicializar ciudades si hay una provincia seleccionada al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const provinciaSelect = document.getElementById('province');
+    if (provinciaSelect.value) {
+        actualizarCiudades();
+    }
+});
+</script>
+{% endblock %}

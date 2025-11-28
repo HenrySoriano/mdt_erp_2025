@@ -1,0 +1,11 @@
+Django==5.2.8
+cryptography>=41.0.0
+django-tailwind
+django-browser-reload
+pillow
+openpyxl
+pandas
+reportlab
+python-pptx
+matplotlib
+playwright

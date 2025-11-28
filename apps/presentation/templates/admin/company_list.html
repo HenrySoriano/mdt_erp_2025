@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Listado de Empresas{% endblock %}
+
+{% block content %}
+<div class="space-y-4 sm:space-y-6">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div class="flex-1 min-w-0">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">Empresas</h1>
+            <p class="mt-1 text-xs sm:text-sm text-slate-700">Listado de todas las empresas registradas</p>
+        </div>
+        <div class="flex-shrink-0">
+            {% if user.is_superuser or user.role == 'SUPERUSER' %}
+            <a href="{% url 'create_company' %}" class="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-800 hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 whitespace-nowrap">
+                <svg class="-ml-1 mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span class="hidden sm:inline">Nueva Empresa</span>
+                <span class="sm:hidden">Nueva</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th scope="col" class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Nombre
+                        </th>
+                        <th scope="col" class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider hidden sm:table-cell">
+                            RUC
+                        </th>
+                        <th scope="col" class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider hidden md:table-cell">
+                            Ubicación
+                        </th>
+                        <th scope="col" class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Empleados
+                        </th>
+                        <th scope="col" class="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    {% for company in companies %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-3 sm:px-6 py-3 sm:py-4">
+                            <div class="flex items-center min-w-0">
+                                <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <span class="text-indigo-600 font-bold text-sm sm:text-lg">{{ company.name|slice:":1" }}</span>
+                                </div>
+                                <div class="ml-2 sm:ml-4 min-w-0 flex-1">
+                                    <div class="text-xs sm:text-sm font-medium text-slate-800 truncate">
+                                        {{ company.name }}
+                                    </div>
+                                    <div class="text-xs sm:text-sm text-slate-500 truncate sm:hidden">
+                                        {{ company.ruc }}
+                                    </div>
+                                    <div class="text-xs text-slate-500 truncate hidden sm:block">
+                                        {{ company.email }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
+                            <div class="text-xs sm:text-sm text-slate-800">{{ company.ruc }}</div>
+                        </td>
+                        <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
+                            <div class="text-xs sm:text-sm text-slate-800">{{ company.city }}</div>
+                            <div class="text-xs sm:text-sm text-slate-500">{{ company.province }}</div>
+                        </td>
+                        <td class="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                {{ company.employee_count }}
+                            </span>
+                        </td>
+                        <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium">
+                            <div class="flex flex-wrap gap-1 sm:flex-col sm:space-y-1">
+                                <a href="{% url 'employee_list_by_company' company.id %}" class="text-indigo-600 hover:text-indigo-900 whitespace-nowrap">Empleados</a>
+                                <a href="{% url 'company_progress' company.id %}" class="text-purple-600 hover:text-purple-900 whitespace-nowrap">Progreso</a>
+                                <a href="{% url 'evaluation_results_by_company' company.id %}" class="text-green-600 hover:text-green-900 whitespace-nowrap">Resultados</a>
+                                {% if user.is_superuser or user.role == 'SUPERUSER' %}
+                                <a href="{% url 'edit_company' company.id %}" class="text-blue-600 hover:text-blue-900 whitespace-nowrap">Editar</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-slate-500">
+                            No hay empresas registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

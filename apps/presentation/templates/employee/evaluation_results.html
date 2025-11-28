@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Resultados Evaluación {{ evaluation.year }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header Compacto -->
+    <div class="bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold mb-1">Resultados de Evaluación {{ evaluation.year }}</h1>
+                <p class="text-blue-100 text-sm">{{ employee.full_name }} • {{ evaluation.employee.company.name }}</p>
+                <p class="text-blue-100 text-sm">Completada el {{ evaluation.date_completed|date:"d/m/Y" }}</p>
+            </div>
+            <div class="text-right">
+                <div class="text-5xl font-bold mb-1
+                    {% if summary.overall_risk == 'BAJO' %}text-green-200
+                    {% elif summary.overall_risk == 'MEDIO' %}text-yellow-200
+                    {% else %}text-red-200{% endif %}">
+                    {{ summary.overall_risk }}
+                </div>
+                <p class="text-blue-100 text-sm">Riesgo General</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen Visual Compacto -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 text-center">
+            <div class="text-3xl font-bold text-green-700">{{ risk_counts.BAJO }}</div>
+            <div class="text-sm text-green-600 font-semibold">Bajo</div>
+        </div>
+        <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 text-center">
+            <div class="text-3xl font-bold text-yellow-700">{{ risk_counts.MEDIO }}</div>
+            <div class="text-sm text-yellow-600 font-semibold">Medio</div>
+        </div>
+        <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 text-center">
+            <div class="text-3xl font-bold text-red-700">{{ risk_counts.ALTO }}</div>
+            <div class="text-sm text-red-600 font-semibold">Alto</div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Dimensiones -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="mb-4">
+            <h2 class="text-xl font-bold text-slate-800">Visualización de Dimensiones</h2>
+            <p class="text-sm text-slate-600 mt-1">Distribución de niveles de riesgo por dimensión</p>
+        </div>
+        <div class="relative" style="height: 500px;">
+            <canvas id="dimensionsChart"></canvas>
+        </div>
+        <div class="mt-4 flex justify-center space-x-6 text-sm">
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                <span class="text-gray-700">Bajo Riesgo</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+                <span class="text-gray-700">Medio Riesgo</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                <span class="text-gray-700">Alto Riesgo</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Compacta de Dimensiones -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200">
+            <h2 class="text-xl font-bold text-slate-800">Resumen por Dimensión</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Dimensión</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Puntaje</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Nivel</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Rangos</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for result in risk_results %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-gray-900">{{ result.dimension.name }}</div>
+                            <div class="text-xs text-gray-500">{{ result.dimension.description|truncatewords:8 }}</div>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="text-lg font-bold text-slate-800">{{ result.score }}</span>
+                            <span class="text-xs text-gray-500">/{{ result.question_count }} preguntas</span>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="inline-flex items-center">
+                                <div class="w-3 h-3 rounded-full mr-2
+                                    {% if result.risk_level == 'BAJO' %}bg-green-500
+                                    {% elif result.risk_level == 'MEDIO' %}bg-yellow-500
+                                    {% else %}bg-red-500{% endif %}"></div>
+                                <span class="text-sm font-semibold
+                                    {% if result.risk_level == 'BAJO' %}text-green-700
+                                    {% elif result.risk_level == 'MEDIO' %}text-yellow-700
+                                    {% else %}text-red-700{% endif %}">
+                                    {{ result.risk_level }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="text-xs space-y-1">
+                                <div class="flex items-center justify-center">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                                    <span class="text-slate-600">BAJO: {{ result.dimension.low_risk_min }}-{{ result.dimension.low_risk_max }}</span>
+                                </div>
+                                <div class="flex items-center justify-center">
+                                    <span class="w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>
+                                    <span class="text-slate-600">MEDIO: {{ result.dimension.medium_risk_min }}-{{ result.dimension.medium_risk_max }}</span>
+                                </div>
+                                <div class="flex items-center justify-center">
+                                    <span class="w-2 h-2 rounded-full bg-red-500 mr-1"></span>
+                                    <span class="text-slate-600">ALTO: {{ result.dimension.high_risk_min }}-{{ result.dimension.high_risk_max }}</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recomendaciones para Todas las Dimensiones -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+        <div class="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-bold text-slate-800">Recomendaciones por Dimensión</h2>
+            <p class="text-sm text-slate-600 mt-1">Sugerencias constructivas para mejorar tu bienestar laboral</p>
+        </div>
+        <div class="p-6">
+            <div class="space-y-6">
+                {% for result in risk_results %}
+                {% with dim_recs=recommendations|get_item:result.dimension.name %}
+                {% if dim_recs %}
+                <div class="border-l-4 rounded-lg p-5 shadow-sm
+                    {% if result.risk_level == 'BAJO' %}bg-green-50 border-green-400
+                    {% elif result.risk_level == 'MEDIO' %}bg-yellow-50 border-yellow-400
+                    {% else %}bg-red-50 border-red-400{% endif %}">
+                    <div class="flex items-start justify-between mb-3">
+                        <h3 class="text-lg font-bold 
+                            {% if result.risk_level == 'BAJO' %}text-green-900
+                            {% elif result.risk_level == 'MEDIO' %}text-yellow-900
+                            {% else %}text-red-900{% endif %}">
+                            {{ result.dimension.name }}
+                        </h3>
+                        <span class="text-xs font-semibold px-3 py-1 rounded
+                            {% if result.risk_level == 'BAJO' %}bg-green-500 text-white
+                            {% elif result.risk_level == 'MEDIO' %}bg-yellow-500 text-white
+                            {% else %}bg-red-500 text-white{% endif %}">
+                            {{ result.risk_level }}
+                        </span>
+                    </div>
+                    <div class="space-y-2">
+                        {% for recommendation in dim_recs %}
+                        <div class="flex items-start">
+                            <span class="mr-2 mt-1
+                                {% if result.risk_level == 'BAJO' %}text-green-600
+                                {% elif result.risk_level == 'MEDIO' %}text-yellow-600
+                                {% else %}text-red-600{% endif %}">•</span>
+                            <p class="text-sm text-gray-700 flex-1">{{ recommendation }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensaje General -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-5 mb-6">
+        <h3 class="text-lg font-bold text-blue-900 mb-2">💡 Mensaje General</h3>
+        <div class="space-y-2 text-sm text-gray-700">
+            {% if summary.overall_risk == 'ALTO' %}
+            <p>• Esta evaluación identifica áreas donde podemos trabajar juntos para mejorar tu bienestar laboral. Cada dimensión tiene oportunidades de mejora que pueden abordarse de manera colaborativa.</p>
+            <p>• Considera conversar con tu supervisor/a o recursos humanos sobre estas áreas de manera constructiva, enfocándote en soluciones que beneficien a todos.</p>
+            <p>• Recuerda que tu bienestar es importante y que hay recursos disponibles para apoyarte en este proceso de mejora continua.</p>
+            {% elif summary.overall_risk == 'MEDIO' %}
+            <p>• Tu evaluación muestra algunas áreas con oportunidades de mejora. Identifica las dimensiones específicas donde puedes trabajar en conjunto con tu equipo.</p>
+            <p>• Establece metas concretas y alcanzables para mejorar estas dimensiones de manera colaborativa.</p>
+            <p>• Busca apoyo y recursos disponibles para fortalecer estas áreas. El trabajo en equipo es clave para el éxito.</p>
+            {% else %}
+            <p>• ¡Felicitaciones! Tu evaluación muestra un buen equilibrio general. Continúa manteniendo este nivel y aprovecha las fortalezas identificadas.</p>
+            <p>• Aunque el riesgo general es bajo, mantén la atención en las dimensiones que pueden seguir mejorándose. El crecimiento continuo beneficia a todos.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="flex justify-center space-x-4 pb-6">
+        <a href="{% url 'employee_dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md">
+            ← Volver al Dashboard
+        </a>
+        <a href="{% url 'download_evaluation_pdf' evaluation.id %}" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Descargar PDF
+        </a>
+        {% if completed_evaluations.count >= 2 %}
+        <a href="{% url 'compare_evaluations' %}" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md">
+            Comparar con Otros Años
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Datos de las dimensiones
+    const dimensionsData = [
+        {% for result in risk_results %}
+        {
+            name: "{{ result.dimension.name }}",
+            score: {{ result.score }},
+            riskLevel: "{{ result.risk_level }}",
+            maxScore: {{ result.dimension.high_risk_max }},
+            lowMax: {{ result.dimension.low_risk_max }},
+            mediumMax: {{ result.dimension.medium_risk_max }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Función para obtener el color según el nivel de riesgo
+    function getRiskColor(riskLevel) {
+        if (riskLevel === 'BAJO') return '#10b981'; // green-500
+        if (riskLevel === 'MEDIO') return '#eab308'; // yellow-500
+        return '#ef4444'; // red-500
+    }
+
+    // Función para obtener color de borde
+    function getRiskBorderColor(riskLevel) {
+        if (riskLevel === 'BAJO') return '#059669'; // green-600
+        if (riskLevel === 'MEDIO') return '#ca8a04'; // yellow-600
+        return '#dc2626'; // red-600
+    }
+
+    // Preparar datos para el gráfico
+    const labels = dimensionsData.map(d => d.name);
+    const scores = dimensionsData.map(d => d.score);
+    const backgroundColors = dimensionsData.map(d => getRiskColor(d.riskLevel));
+    const borderColors = dimensionsData.map(d => getRiskBorderColor(d.riskLevel));
+    const maxScores = dimensionsData.map(d => d.maxScore);
+
+    // Calcular el máximo dinámico: encontrar el puntaje más alto y sumarle 5
+    const maxScoreObtained = Math.max(...scores);
+    const finalMaxX = maxScoreObtained + 5;
+
+    // Crear el gráfico
+    const ctx = document.getElementById('dimensionsChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Puntaje Obtenido',
+                    data: scores,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const dataIndex = context.dataIndex;
+                            const dimension = dimensionsData[dataIndex];
+                            let label = 'Puntaje: ' + context.parsed.x;
+                            label += ' (' + dimension.riskLevel + ' Riesgo)';
+                            label += ' | Rango BAJO: 0-' + dimension.lowMax;
+                            label += ' | MEDIO: ' + (dimension.lowMax + 1) + '-' + dimension.mediumMax;
+                            label += ' | ALTO: ' + (dimension.mediumMax + 1) + '-' + dimension.maxScore;
+                            return label;
+                        }
+                    },
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 12
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: finalMaxX,
+                    ticks: {
+                        font: {
+                            size: 11,
+                            weight: 'bold'
+                        },
+                        color: '#6b7280',
+                        stepSize: 1,
+                        callback: function(value) {
+                            // Mostrar todos los valores enteros
+                            return Number.isInteger(value) ? value : '';
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    }
+                },
+                y: {
+                    ticks: {
+                        font: {
+                            size: 11,
+                            weight: '500'
+                        },
+                        color: '#374151',
+                        maxRotation: 0,
+                        minRotation: 0
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            animation: {
+                duration: 1500,
+                easing: 'easeInOutQuart'
+            }
+        }
+    });
+});
+</script>
+
+<style>
+    /* Asegurar que el contenido se vea bien en una sola pantalla */
+    @media (min-height: 900px) {
+        .max-w-7xl {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+    }
+</style>
+{% endblock %}
