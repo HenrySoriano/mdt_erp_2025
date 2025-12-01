@@ -14,6 +14,13 @@ from pathlib import Path
 import os
 from django.core.exceptions import ImproperlyConfigured
 
+# Configurar PyMySQL como driver de MySQL (más fácil en Windows)
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -121,12 +128,101 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Cargar configuración adicional de producción si DEBUG=False
+if not DEBUG:
+    try:
+        from .settings_production import *
+    except ImportError:
+        pass
+
+# Detectar entorno y configurar base de datos apropiada
+# PythonAnywhere establece USER automáticamente
+# También podemos detectar por el hostname o variable de entorno
+is_pythonanywhere = (
+    'pythonanywhere.com' in os.environ.get('HOSTNAME', '') or
+    'PYTHONANYWHERE_DOMAIN' in os.environ or
+    os.environ.get('USER', '').endswith('pythonanywhere') or
+    '/home/' in os.environ.get('HOME', '') and 'pythonanywhere' in os.environ.get('HOME', '')
+)
+
+if is_pythonanywhere:
+    # Configuración para PythonAnywhere (producción)
+    PA_USERNAME = os.environ.get('USER', '')
+    # Limpiar si termina en 'pythonanywhere'
+    if PA_USERNAME.endswith('pythonanywhere'):
+        PA_USERNAME = PA_USERNAME.replace('pythonanywhere', '')
+    
+    # Cargar configuración específica de PythonAnywhere
+    try:
+        from .settings_pythonanywhere import *
+    except ImportError:
+        pass
+    
+    # Si no se cargó desde settings_pythonanywhere, configurar aquí
+    if 'DATABASES' not in locals() or not DATABASES.get('default'):
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': get_env_variable('DB_NAME', default=f'{PA_USERNAME}$default'),
+                'USER': get_env_variable('DB_USER', default=PA_USERNAME),
+                'PASSWORD': get_env_variable('DB_PASSWORD', default=''),
+                'HOST': get_env_variable('DB_HOST', default=f'{PA_USERNAME}.mysql.pythonanywhere-services.com'),
+                'PORT': get_env_variable('DB_PORT', default='3306'),
+                'OPTIONS': {
+                    'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                    'charset': 'utf8mb4',
+                },
+            }
+        }
+elif get_env_variable('USE_SQLITE', default='False').lower() == 'true':
+    # Configuración para desarrollo local con SQLite (opcional)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+elif get_env_variable('USE_MYSQL_LOCAL', default='True').lower() == 'true':
+    # Configuración para desarrollo local con MySQL/MariaDB (XAMPP)
+    # Workaround para MariaDB 10.4 (XAMPP) - Django requiere 10.5+ pero funciona con 10.4
+    import django.db.backends.mysql.base
+    import django.db.backends.mysql.features
+    
+    # Deshabilitar verificación de versión
+    def patched_check_database_version_supported(self):
+        """Deshabilitar verificación de versión para desarrollo local con MariaDB 10.4"""
+        pass
+    
+    # Deshabilitar RETURNING (no soportado en MariaDB 10.4)
+    def patched_can_return_columns_from_insert(self):
+        """Deshabilitar RETURNING para MariaDB 10.4"""
+        return False
+    
+    django.db.backends.mysql.base.DatabaseWrapper.check_database_version_supported = patched_check_database_version_supported
+    django.db.backends.mysql.features.DatabaseFeatures.can_return_columns_from_insert = property(lambda self: False)
+    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': get_env_variable('DB_NAME', default='mdt_erp_dev'),
+            'USER': get_env_variable('DB_USER', default='root'),
+            'PASSWORD': get_env_variable('DB_PASSWORD', default=''),
+            'HOST': get_env_variable('DB_HOST', default='127.0.0.1'),
+            'PORT': get_env_variable('DB_PORT', default='3306'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+else:
+    # Configuración por defecto para desarrollo local (SQLite)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -187,6 +283,11 @@ PWA_APP_SCOPE = '/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'infrastructure.CustomUser'
+
+# Authentication URLs
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'  # Se redirige según el rol del usuario en las vistas
+LOGOUT_REDIRECT_URL = '/login/'
 
 TAILWIND_APP_NAME = 'theme'
 

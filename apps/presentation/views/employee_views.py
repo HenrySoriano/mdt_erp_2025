@@ -2,12 +2,16 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
+from django.core.exceptions import ValidationError
 from datetime import datetime
-from apps.infrastructure.models import Employee, Evaluation, Question, Response, RiskResult
+import json
+from apps.infrastructure.models import Employee, Evaluation, Question, Response, RiskResult, EvaluationPeriod, Dimension
 from apps.application.services.risk_calculator import RiskCalculatorService
 from apps.application.services.recommendations_service import RecommendationsService
 from apps.presentation.utils.ecuador_data import PROVINCIAS_ECUADOR, CIUDADES_POR_PROVINCIA, get_todas_las_ciudades
+from apps.presentation.utils.security import validate_year
 from django.utils import timezone
 
 
@@ -22,17 +26,36 @@ def employee_dashboard(request):
     
     current_year = datetime.now().year
     
-    # Verificar si ya tiene una evaluación este año
-    current_evaluation = Evaluation.objects.filter(
-        employee=employee,
+    # Buscar período activo para la empresa
+    active_period = EvaluationPeriod.objects.filter(
+        company=employee.company,
+        is_active=True,
         year=current_year
     ).first()
+    
+    # Verificar si ya tiene una evaluación para el período activo
+    current_evaluation = None
+    if active_period:
+        current_evaluation = Evaluation.objects.filter(
+            employee=employee,
+            evaluation_period=active_period
+        ).first()
     
     # Obtener evaluaciones completadas
     completed_evaluations = Evaluation.objects.filter(
         employee=employee,
         status=Evaluation.Status.COMPLETED
     ).order_by('-year')
+    
+    # Verificar si puede crear nueva evaluación (hay período activo y no tiene evaluación completada o puede editar)
+    can_create_new = False
+    if active_period:
+        today = timezone.now().date()
+        if active_period.start_date <= today <= active_period.end_date:
+            if not current_evaluation:
+                can_create_new = True
+            elif current_evaluation.is_complete and current_evaluation.can_edit():
+                can_create_new = True
     
     context = {
         'employee': employee,
@@ -41,6 +64,8 @@ def employee_dashboard(request):
         'completed_evaluations': completed_evaluations,
         'has_current_evaluation': current_evaluation is not None,
         'can_start_evaluation': current_evaluation is None or current_evaluation.status == Evaluation.Status.DRAFT,
+        'active_period': active_period,
+        'can_create_new': can_create_new,
     }
     
     return render(request, 'employee/dashboard.html', context)
@@ -57,16 +82,44 @@ def start_evaluation(request):
     
     current_year = datetime.now().year
     
-    # Buscar evaluación existente o crear una nueva
-    evaluation, created = Evaluation.objects.get_or_create(
+    # Buscar período activo para la empresa
+    active_period = EvaluationPeriod.objects.filter(
+        company=employee.company,
+        is_active=True,
+        year=current_year
+    ).first()
+    
+    if not active_period:
+        messages.error(request, 'No hay un período de evaluación activo para tu empresa. Contacta al administrador.')
+        return redirect('employee_dashboard')
+    
+    # Verificar que la fecha actual esté dentro del período
+    today = timezone.now().date()
+    if today < active_period.start_date or today > active_period.end_date:
+        messages.error(request, f'El período de evaluación está cerrado. Período: {active_period.start_date} - {active_period.end_date}')
+        return redirect('employee_dashboard')
+    
+    # Buscar evaluación existente para este período o crear una nueva
+    evaluation = Evaluation.objects.filter(
+        employee=employee,
+        evaluation_period=active_period
+    ).first()
+    
+    if evaluation:
+        if evaluation.is_complete and not evaluation.can_edit():
+            messages.info(request, 'Ya completaste la evaluación para este período y alcanzaste el límite de ediciones.')
+            return redirect('view_evaluation_results', evaluation_id=evaluation.id)
+        return redirect('take_evaluation', evaluation_id=evaluation.id)
+    
+    # Crear nueva evaluación para este período
+    evaluation = Evaluation.objects.create(
         employee=employee,
         year=current_year,
-        status=Evaluation.Status.DRAFT,
-        defaults={'year': current_year}
+        evaluation_period=active_period,
+        status=Evaluation.Status.DRAFT
     )
     
-    if created:
-        messages.success(request, 'Evaluación iniciada. Puedes guardar tu progreso en cualquier momento.')
+    messages.success(request, f'Evaluación iniciada para el período {active_period.name}. Puedes guardar tu progreso en cualquier momento.')
     
     return redirect('take_evaluation', evaluation_id=evaluation.id)
 
@@ -82,9 +135,15 @@ def take_evaluation(request, evaluation_id):
     
     evaluation = get_object_or_404(Evaluation, id=evaluation_id, employee=employee)
     
-    if evaluation.is_complete:
-        messages.info(request, 'Esta evaluación ya fue completada')
+    # Si está completada pero puede editar, permitir acceso
+    if evaluation.is_complete and not evaluation.can_edit():
+        messages.info(request, 'Esta evaluación ya fue completada y has alcanzado el límite de ediciones.')
         return redirect('view_evaluation_results', evaluation_id=evaluation.id)
+    
+    # Si está completada pero puede editar, mostrar mensaje
+    if evaluation.is_complete and evaluation.can_edit():
+        remaining = evaluation.get_remaining_edits()
+        messages.warning(request, f'Estás editando una evaluación completada. Te quedan {remaining} ediciones restantes.')
     
     questions = Question.objects.all().order_by('number')
     
@@ -96,6 +155,17 @@ def take_evaluation(request, evaluation_id):
     
     if request.method == 'POST':
         action = request.POST.get('action')
+        
+        # Manejar aceptación de confidencialidad
+        if action == 'accept_confidentiality':
+            evaluation.confidentiality_accepted = True
+            evaluation.save()
+            return redirect('take_evaluation', evaluation_id=evaluation.id)
+        
+        # Verificar si puede editar (si está completada)
+        if evaluation.is_complete and not evaluation.can_edit():
+            messages.error(request, f'Has alcanzado el límite de 3 ediciones. No puedes modificar esta evaluación.')
+            return redirect('view_evaluation_results', evaluation_id=evaluation.id)
         
         with transaction.atomic():
             # Guardar datos generales
@@ -110,6 +180,11 @@ def take_evaluation(request, evaluation_id):
             evaluation.age_range = request.POST.get('age_range', '')
             evaluation.ethnicity = request.POST.get('ethnicity', '')
             evaluation.gender = request.POST.get('gender', '')
+            
+            # Guardar aceptación de confidencialidad si viene
+            if 'confidentiality_accepted' in request.POST:
+                evaluation.confidentiality_accepted = True
+            
             evaluation.save()
             
             # Guardar todas las respuestas
@@ -127,24 +202,233 @@ def take_evaluation(request, evaluation_id):
                 messages.success(request, 'Progreso guardado exitosamente')
                 return redirect('employee_dashboard')
             
+            elif action == 'preview_results':
+                # Verificar si es una petición AJAX (fetch)
+                is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Content-Type', '').startswith('application/json')
+                
+                # Guardar todas las respuestas primero
+                for question in questions:
+                    answer_key = f'question_{question.id}'
+                    if answer_key in request.POST:
+                        answer = int(request.POST[answer_key])
+                        Response.objects.update_or_create(
+                            evaluation=evaluation,
+                            question=question,
+                            defaults={'answer': answer}
+                        )
+                
+                # Verificar que todas las preguntas estén respondidas
+                total_questions = questions.count()
+                answered_question_ids = set(Response.objects.filter(evaluation=evaluation).values_list('question_id', flat=True))
+                all_question_ids = set(questions.values_list('id', flat=True))
+                missing_question_ids = all_question_ids - answered_question_ids
+                answered_questions = len(answered_question_ids)
+                
+                if answered_questions < total_questions or missing_question_ids:
+                    # Identificar preguntas faltantes
+                    missing_questions = Question.objects.filter(id__in=missing_question_ids).order_by('number')
+                    missing_numbers = [q.number for q in missing_questions]
+                    missing_list = ", ".join(map(str, missing_numbers[:10])) + ("..." if len(missing_numbers) > 10 else "")
+                    
+                    error_message = f'Debes responder todas las preguntas antes de ver los resultados. Respondidas: {answered_questions}/{total_questions}. Preguntas faltantes: {missing_list}'
+                    
+                    if is_ajax:
+                        return JsonResponse({
+                            'success': False,
+                            'error': error_message,
+                            'missing_questions': missing_numbers
+                        }, status=400)
+                    else:
+                        messages.error(request, error_message)
+                        return redirect('take_evaluation', evaluation_id=evaluation.id)
+                
+                # Si ya está completada, recalcular resultados y marcar como DRAFT para permitir reenvío
+                was_complete = evaluation.is_complete
+                was_confidentiality_accepted = evaluation.confidentiality_accepted
+                original_edit_count = evaluation.edit_count
+                
+                if was_complete:
+                    # Si ya está completada, recalcular resultados y marcar como DRAFT temporalmente
+                    # para que aparezca el botón de enviar en la vista de resultados
+                    try:
+                        calculator = RiskCalculatorService()
+                        calculator.calculate_evaluation_risk(evaluation)
+                        
+                        # Marcar como DRAFT temporalmente para permitir reenvío desde resultados
+                        evaluation.status = Evaluation.Status.DRAFT
+                        evaluation.save()
+                        
+                        # Guardar en sesión que esta evaluación estaba originalmente completada
+                        # para poder incrementar el contador cuando se envíe
+                        request.session[f'eval_{evaluation.id}_was_complete'] = True
+                        request.session[f'eval_{evaluation.id}_original_edit_count'] = original_edit_count
+                        
+                        if is_ajax:
+                            return JsonResponse({
+                                'success': True,
+                                'redirect_url': reverse('view_evaluation_results', args=[evaluation.id])
+                            })
+                        return redirect('view_evaluation_results', evaluation_id=evaluation.id)
+                    except ValueError as e:
+                        # Error de validación con mensaje específico
+                        error_message = str(e)
+                        if is_ajax:
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'Error al calcular resultados: {error_message}'
+                            }, status=400)
+                        messages.error(request, f'Error al calcular resultados: {error_message}')
+                        return redirect('take_evaluation', evaluation_id=evaluation.id)
+                    except Exception as e:
+                        import traceback
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        error_detail = traceback.format_exc()
+                        logger.error(f'Error al recalcular resultados para evaluación {evaluation.id}: {str(e)}\n{error_detail}')
+                        error_message = str(e) if str(e) else 'Error desconocido al calcular resultados'
+                        if is_ajax:
+                            return JsonResponse({
+                                'success': False,
+                                'error': f'Error al calcular resultados: {error_message}. Por favor, verifica que todas las preguntas estén respondidas correctamente.'
+                            }, status=500)
+                        messages.error(request, f'Error al calcular resultados: {error_message}. Por favor, verifica que todas las preguntas estén respondidas correctamente.')
+                        return redirect('take_evaluation', evaluation_id=evaluation.id)
+                
+                # Si no está completada, calcular riesgos temporalmente para vista previa
+                # Necesitamos marcar temporalmente como completada para calcular, luego revertir
+                evaluation.status = Evaluation.Status.COMPLETED
+                if not evaluation.confidentiality_accepted:
+                    evaluation.confidentiality_accepted = True  # Temporal para calcular
+                evaluation.save()
+                
+                try:
+                    calculator = RiskCalculatorService()
+                    calculator.calculate_evaluation_risk(evaluation)
+                except ValueError as e:
+                    # Error de validación con mensaje específico (preguntas faltantes, etc.)
+                    evaluation.status = Evaluation.Status.DRAFT
+                    evaluation.confidentiality_accepted = was_confidentiality_accepted
+                    evaluation.save()
+                    # Mostrar el mensaje específico del error
+                    error_message = str(e)
+                    if is_ajax:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Error al calcular resultados: {error_message}'
+                        }, status=400)
+                    messages.error(request, f'Error al calcular resultados: {error_message}')
+                    return redirect('take_evaluation', evaluation_id=evaluation.id)
+                except Exception as e:
+                    # Otros errores
+                    evaluation.status = Evaluation.Status.DRAFT
+                    evaluation.confidentiality_accepted = was_confidentiality_accepted
+                    evaluation.save()
+                    import traceback
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    error_detail = traceback.format_exc()
+                    logger.error(f'Error al calcular resultados para evaluación {evaluation.id}: {str(e)}\n{error_detail}')
+                    # Mostrar el mensaje del error si es descriptivo, sino mostrar genérico
+                    error_message = str(e) if str(e) else 'Error desconocido al calcular resultados'
+                    if is_ajax:
+                        return JsonResponse({
+                            'success': False,
+                            'error': f'Error al calcular resultados: {error_message}. Por favor, verifica que todas las preguntas estén respondidas correctamente.'
+                        }, status=500)
+                    messages.error(request, f'Error al calcular resultados: {error_message}. Por favor, verifica que todas las preguntas estén respondidas correctamente.')
+                    return redirect('take_evaluation', evaluation_id=evaluation.id)
+                
+                # Revertir el estado para permitir edición (modo preview)
+                evaluation.status = Evaluation.Status.DRAFT
+                evaluation.confidentiality_accepted = was_confidentiality_accepted
+                evaluation.save()
+                
+                # Redirigir a vista de resultados en modo preview
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('view_evaluation_results', args=[evaluation.id])
+                    })
+                return redirect('view_evaluation_results', evaluation_id=evaluation.id)
+            
             elif action == 'submit':
+                # Guardar todas las respuestas primero
+                for question in questions:
+                    answer_key = f'question_{question.id}'
+                    if answer_key in request.POST:
+                        answer = int(request.POST[answer_key])
+                        Response.objects.update_or_create(
+                            evaluation=evaluation,
+                            question=question,
+                            defaults={'answer': answer}
+                        )
+                
                 # Verificar que todas las preguntas estén respondidas
                 total_questions = questions.count()
                 answered_questions = Response.objects.filter(evaluation=evaluation).count()
                 
                 if answered_questions < total_questions:
-                    messages.error(request, f'Debes responder todas las preguntas. Respondidas: {answered_questions}/{total_questions}')
+                    # Identificar preguntas faltantes
+                    answered_question_ids = set(Response.objects.filter(evaluation=evaluation).values_list('question_id', flat=True))
+                    all_question_ids = set(questions.values_list('id', flat=True))
+                    missing_question_ids = all_question_ids - answered_question_ids
+                    missing_questions = Question.objects.filter(id__in=missing_question_ids).order_by('number')
+                    missing_numbers = [q.number for q in missing_questions]
+                    
+                    messages.error(request, f'Debes responder todas las preguntas. Respondidas: {answered_questions}/{total_questions}. Preguntas faltantes: {", ".join(map(str, missing_numbers[:10]))}{"..." if len(missing_numbers) > 10 else ""}')
+                    return redirect('take_evaluation', evaluation_id=evaluation.id)
+                elif not evaluation.confidentiality_accepted:
+                    messages.error(request, 'Debes aceptar la certificación de confidencialidad antes de enviar.')
+                    return redirect('take_evaluation', evaluation_id=evaluation.id)
                 else:
+                    # Verificar si esta evaluación estaba originalmente completada (modo edición)
+                    was_complete_before = request.session.get(f'eval_{evaluation.id}_was_complete', False)
+                    original_edit_count = request.session.get(f'eval_{evaluation.id}_original_edit_count', 0)
+                    
+                    # Si estaba completada antes o está completada ahora, incrementar contador de ediciones
+                    if was_complete_before or evaluation.is_complete:
+                        if was_complete_before:
+                            evaluation.edit_count = original_edit_count + 1
+                        else:
+                            evaluation.edit_count += 1
+                        evaluation.last_edited_at = datetime.now()
+                    
                     # Marcar como completada
                     evaluation.status = Evaluation.Status.COMPLETED
-                    evaluation.date_completed = datetime.now()
+                    if not evaluation.date_completed:
+                        evaluation.date_completed = datetime.now()
                     evaluation.save()
                     
-                    # Calcular riesgos
-                    calculator = RiskCalculatorService()
-                    calculator.calculate_evaluation_risk(evaluation)
+                    # Limpiar variables de sesión si existen
+                    if f'eval_{evaluation.id}_was_complete' in request.session:
+                        del request.session[f'eval_{evaluation.id}_was_complete']
+                    if f'eval_{evaluation.id}_original_edit_count' in request.session:
+                        del request.session[f'eval_{evaluation.id}_original_edit_count']
                     
-                    messages.success(request, '¡Evaluación completada exitosamente!')
+                    # Calcular riesgos
+                    try:
+                        calculator = RiskCalculatorService()
+                        calculator.calculate_evaluation_risk(evaluation)
+                    except ValueError as e:
+                        # Error de validación con mensaje específico
+                        messages.error(request, f'Error al calcular resultados: {str(e)}')
+                        return redirect('take_evaluation', evaluation_id=evaluation.id)
+                    except Exception as e:
+                        # Otros errores
+                        import traceback
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        error_detail = traceback.format_exc()
+                        logger.error(f'Error al calcular resultados al enviar evaluación {evaluation.id}: {str(e)}\n{error_detail}')
+                        error_message = str(e) if str(e) else 'Error desconocido al calcular resultados'
+                        messages.error(request, f'Error al calcular resultados: {error_message}. Por favor, verifica que todas las preguntas estén respondidas correctamente.')
+                        return redirect('take_evaluation', evaluation_id=evaluation.id)
+                    
+                    if evaluation.edit_count > 0:
+                        remaining = evaluation.get_remaining_edits()
+                        messages.success(request, f'¡Evaluación actualizada exitosamente! Te quedan {remaining} ediciones restantes.')
+                    else:
+                        messages.success(request, '¡Evaluación completada exitosamente!')
                     return redirect('view_evaluation_results', evaluation_id=evaluation.id)
     
     # Preparar datos de provincias y ciudades
@@ -173,8 +457,8 @@ def take_evaluation(request, evaluation_id):
 
 
 @login_required
-def view_evaluation_results(request, evaluation_id):
-    """Ver resultados de una evaluación completada"""
+def submit_evaluation_from_results(request, evaluation_id):
+    """Enviar evaluación definitivamente desde la página de resultados"""
     try:
         employee = request.user.employee_profile
     except Employee.DoesNotExist:
@@ -184,9 +468,102 @@ def view_evaluation_results(request, evaluation_id):
     evaluation = get_object_or_404(
         Evaluation,
         id=evaluation_id,
-        employee=employee,
-        status=Evaluation.Status.COMPLETED
+        employee=employee
     )
+    
+    # Verificar que no esté ya completada (a menos que sea una re-edición)
+    if evaluation.is_complete:
+        # Verificar si hay una sesión que indique que estaba en modo preview
+        was_in_preview = request.session.get(f'eval_{evaluation.id}_was_complete', False)
+        if not was_in_preview:
+            messages.info(request, 'Esta evaluación ya fue enviada.')
+            return redirect('view_evaluation_results', evaluation_id=evaluation.id)
+    
+    # Verificar que todas las preguntas estén respondidas
+    questions = Question.objects.all()
+    total_questions = questions.count()
+    answered_question_ids = set(Response.objects.filter(evaluation=evaluation).values_list('question_id', flat=True))
+    all_question_ids = set(questions.values_list('id', flat=True))
+    missing_question_ids = all_question_ids - answered_question_ids
+    answered_questions = len(answered_question_ids)
+    
+    if answered_questions < total_questions or missing_question_ids:
+        missing_questions = Question.objects.filter(id__in=missing_question_ids).order_by('number')
+        missing_numbers = [q.number for q in missing_questions]
+        missing_list = ", ".join(map(str, missing_numbers[:10])) + ("..." if len(missing_numbers) > 10 else "")
+        messages.error(request, f'Debes responder todas las preguntas antes de enviar. Respondidas: {answered_questions}/{total_questions}. Preguntas faltantes: {missing_list}')
+        return redirect('take_evaluation', evaluation_id=evaluation.id)
+    
+    # Verificar confidencialidad
+    if not evaluation.confidentiality_accepted:
+        messages.error(request, 'Debes aceptar la certificación de confidencialidad antes de enviar.')
+        return redirect('take_evaluation', evaluation_id=evaluation.id)
+    
+    # Verificar si esta evaluación estaba originalmente completada (modo edición)
+    was_complete_before = request.session.get(f'eval_{evaluation.id}_was_complete', False)
+    original_edit_count = request.session.get(f'eval_{evaluation.id}_original_edit_count', 0)
+    
+    with transaction.atomic():
+        # Si estaba completada antes, incrementar contador de ediciones
+        if was_complete_before:
+            evaluation.edit_count = original_edit_count + 1
+            evaluation.last_edited_at = datetime.now()
+        
+        # Marcar como completada
+        evaluation.status = Evaluation.Status.COMPLETED
+        if not evaluation.date_completed:
+            evaluation.date_completed = datetime.now()
+        evaluation.save()
+        
+        # Limpiar variables de sesión
+        if f'eval_{evaluation.id}_was_complete' in request.session:
+            del request.session[f'eval_{evaluation.id}_was_complete']
+        if f'eval_{evaluation.id}_original_edit_count' in request.session:
+            del request.session[f'eval_{evaluation.id}_original_edit_count']
+        
+        # Calcular riesgos
+        try:
+            calculator = RiskCalculatorService()
+            calculator.calculate_evaluation_risk(evaluation)
+        except ValueError as e:
+            messages.error(request, f'Error al calcular resultados: {str(e)}')
+            return redirect('take_evaluation', evaluation_id=evaluation.id)
+        except Exception as e:
+            import traceback
+            import logging
+            logger = logging.getLogger(__name__)
+            error_detail = traceback.format_exc()
+            logger.error(f'Error al calcular resultados al enviar evaluación {evaluation.id}: {str(e)}\n{error_detail}')
+            error_message = str(e) if str(e) else 'Error desconocido al calcular resultados'
+            messages.error(request, f'Error al calcular resultados: {error_message}. Por favor, verifica que todas las preguntas estén respondidas correctamente.')
+            return redirect('take_evaluation', evaluation_id=evaluation.id)
+    
+    messages.success(request, '¡Evaluación enviada exitosamente!')
+    return redirect('view_evaluation_results', evaluation_id=evaluation.id)
+
+
+@login_required
+def view_evaluation_results(request, evaluation_id):
+    """Ver resultados de una evaluación completada o en preview"""
+    try:
+        employee = request.user.employee_profile
+    except Employee.DoesNotExist:
+        messages.error(request, 'No tienes un perfil de empleado asociado')
+        return redirect('login')
+    
+    # Permitir ver resultados incluso si está en DRAFT (para preview)
+    evaluation = get_object_or_404(
+        Evaluation,
+        id=evaluation_id,
+        employee=employee
+    )
+    
+    # Si está en DRAFT y no tiene resultados calculados, redirigir al formulario
+    if evaluation.status == Evaluation.Status.DRAFT:
+        risk_results_count = RiskResult.objects.filter(evaluation=evaluation).count()
+        if risk_results_count == 0:
+            messages.info(request, 'Primero debes completar la evaluación para ver los resultados.')
+            return redirect('take_evaluation', evaluation_id=evaluation.id)
     
     # Obtener resultados por dimensión
     risk_results = RiskResult.objects.filter(evaluation=evaluation).select_related('dimension').prefetch_related('dimension__questions').order_by('dimension__order')
@@ -202,6 +579,14 @@ def view_evaluation_results(request, evaluation_id):
     # Obtener recomendaciones personalizadas (con género)
     recommendations_service = RecommendationsService()
     recommendations = recommendations_service.get_all_recommendations(risk_results, evaluation)
+    
+    # Obtener recomendaciones médicas ocupacionales por dimensión
+    medical_recommendations = {}
+    for result in risk_results:
+        medical_recommendations[result.dimension.name] = recommendations_service.get_medical_recommendations(
+            result.dimension.name,
+            result.risk_level
+        )
     
     # Contar dimensiones por nivel de riesgo
     risk_counts = {
@@ -226,6 +611,7 @@ def view_evaluation_results(request, evaluation_id):
         'risk_results': risk_results,
         'summary': summary,
         'recommendations': recommendations,
+        'medical_recommendations': medical_recommendations,
         'risk_counts': risk_counts,
         'high_risk_results': high_risk_results,
         'medium_risk_results': medium_risk_results,
@@ -237,42 +623,60 @@ def view_evaluation_results(request, evaluation_id):
 
 @login_required
 def compare_evaluations(request):
-    """Comparar evaluaciones de diferentes años"""
+    """Comparar evaluaciones específicas (por fecha o año)"""
     try:
         employee = request.user.employee_profile
     except Employee.DoesNotExist:
         messages.error(request, 'No tienes un perfil de empleado asociado')
         return redirect('login')
     
-    # Obtener años disponibles
+    # Obtener todas las evaluaciones completadas con información detallada
     completed_evaluations = Evaluation.objects.filter(
         employee=employee,
         status=Evaluation.Status.COMPLETED
-    ).order_by('-year')
-    
-    available_years = list(completed_evaluations.values_list('year', flat=True))
+    ).order_by('-date_completed', '-year')
     
     comparison_data = None
+    eval1_selected = None
+    eval2_selected = None
     
-    if request.method == 'GET' and 'year1' in request.GET and 'year2' in request.GET:
-        # Validar años de forma segura
+    if request.method == 'GET' and 'eval1' in request.GET and 'eval2' in request.GET:
+        # Validar IDs de evaluaciones
         try:
-            year1 = validate_year(request.GET.get('year1', str(datetime.now().year)))
-            year2 = validate_year(request.GET.get('year2', str(datetime.now().year)))
-        except (ValueError, TypeError, KeyError, ValidationError):
-            messages.error(request, 'Años inválidos para comparación')
+            eval1_id = int(request.GET.get('eval1', 0))
+            eval2_id = int(request.GET.get('eval2', 0))
+            
+            if eval1_id == eval2_id:
+                messages.error(request, 'Debes seleccionar dos evaluaciones diferentes')
+                return redirect('compare_evaluations')
+            
+            eval1_selected = get_object_or_404(Evaluation, id=eval1_id, employee=employee, status=Evaluation.Status.COMPLETED)
+            eval2_selected = get_object_or_404(Evaluation, id=eval2_id, employee=employee, status=Evaluation.Status.COMPLETED)
+            
+        except (ValueError, TypeError):
+            messages.error(request, 'IDs de evaluaciones inválidos')
             return redirect('compare_evaluations')
         
         try:
             calculator = RiskCalculatorService()
-            comparison_data = calculator.compare_evaluations(employee.id, year1, year2)
+            comparison_data = calculator.compare_evaluations_by_id(eval1_selected.id, eval2_selected.id)
+            
+            # Agregar campos simplificados para el template
+            if comparison_data:
+                for dim in comparison_data['dimensions']:
+                    dim['score1'] = dim.get('score1', 0)
+                    dim['risk1'] = dim.get('risk1', '')
+                    dim['score2'] = dim.get('score2', 0)
+                    dim['risk2'] = dim.get('risk2', '')
         except ValueError as e:
             messages.error(request, str(e))
     
     context = {
         'employee': employee,
-        'available_years': available_years,
+        'completed_evaluations': completed_evaluations,
         'comparison_data': comparison_data,
+        'eval1_selected': eval1_selected,
+        'eval2_selected': eval2_selected,
     }
     
     return render(request, 'employee/compare_evaluations.html', context)
@@ -321,6 +725,14 @@ def download_evaluation_pdf(request, evaluation_id):
     # Obtener recomendaciones personalizadas (con género)
     recommendations_service = RecommendationsService()
     recommendations = recommendations_service.get_all_recommendations(risk_results, evaluation)
+    
+    # Obtener recomendaciones médicas ocupacionales por dimensión
+    medical_recommendations = {}
+    for result in risk_results:
+        medical_recommendations[result.dimension.name] = recommendations_service.get_medical_recommendations(
+            result.dimension.name,
+            result.risk_level
+        )
     
     # Contar dimensiones por nivel de riesgo
     risk_counts = {
@@ -510,6 +922,25 @@ def download_evaluation_pdf(request, evaluation_id):
             for rec in dim_recs:
                 rec_para = Paragraph(f"• {rec}", normal_style)
                 elements.append(rec_para)
+            
+            # Agregar recomendaciones médico ocupacionales si existen
+            med_recs = medical_recommendations.get(result.dimension.name, [])
+            if med_recs:
+                med_title_style = ParagraphStyle(
+                    'MedTitle',
+                    parent=styles['Heading3'],
+                    fontSize=10,
+                    textColor=colors.HexColor('#7c3aed'),
+                    spaceAfter=4,
+                    spaceBefore=8,
+                    fontName='Helvetica-Bold'
+                )
+                med_title = Paragraph("Recomendaciones Médicas Ocupacionales:", med_title_style)
+                elements.append(med_title)
+                
+                for med_rec in med_recs:
+                    med_rec_para = Paragraph(f"• {med_rec}", normal_style)
+                    elements.append(med_rec_para)
             
             elements.append(Spacer(1, 0.15*inch))
     

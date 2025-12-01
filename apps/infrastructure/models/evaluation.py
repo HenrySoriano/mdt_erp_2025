@@ -1,6 +1,49 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from .company import Employee
+from django.core.exceptions import ValidationError
+from .company import Employee, Company
+
+
+class EvaluationPeriod(models.Model):
+    """Modelo para períodos de evaluación con fechas de inicio y fin"""
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='evaluation_periods'
+    )
+    name = models.CharField(_('Nombre del período'), max_length=200, help_text='Ej: Evaluación Primer Semestre 2025')
+    start_date = models.DateField(_('Fecha de inicio'))
+    end_date = models.DateField(_('Fecha de fin'))
+    is_active = models.BooleanField(_('Período activo'), default=True, help_text='Solo un período puede estar activo por empresa')
+    year = models.IntegerField(_('Año'), help_text='Año al que pertenece este período')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Período de Evaluación')
+        verbose_name_plural = _('Períodos de Evaluación')
+        ordering = ['-start_date']
+        unique_together = ['company', 'start_date', 'end_date']
+    
+    def __str__(self):
+        return f"{self.name} ({self.start_date} - {self.end_date})"
+    
+    def clean(self):
+        """Validar que la fecha de fin sea posterior a la de inicio"""
+        if self.end_date <= self.start_date:
+            raise ValidationError(_('La fecha de fin debe ser posterior a la fecha de inicio'))
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        # Si este período se marca como activo, desactivar otros períodos de la misma empresa
+        if self.is_active:
+            EvaluationPeriod.objects.filter(company=self.company, is_active=True).exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
+    
+    @property
+    def duration_days(self):
+        """Retorna la duración del período en días"""
+        return (self.end_date - self.start_date).days + 1
 
 
 class Dimension(models.Model):
@@ -114,6 +157,14 @@ class Evaluation(models.Model):
         on_delete=models.CASCADE,
         related_name='evaluations'
     )
+    evaluation_period = models.ForeignKey(
+        'EvaluationPeriod',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='evaluations',
+        help_text='Período de evaluación al que pertenece esta evaluación'
+    )
     status = models.CharField(
         _('Estado'),
         max_length=20,
@@ -123,6 +174,9 @@ class Evaluation(models.Model):
     year = models.IntegerField(_('Año'))
     date_started = models.DateTimeField(_('Fecha de inicio'), auto_now_add=True)
     date_completed = models.DateTimeField(_('Fecha de finalización'), null=True, blank=True)
+    edit_count = models.IntegerField(_('Número de ediciones'), default=0, help_text='Número de veces que se ha editado después de completar (máximo 3)')
+    last_edited_at = models.DateTimeField(_('Última edición'), null=True, blank=True)
+    confidentiality_accepted = models.BooleanField(_('Confidencialidad aceptada'), default=False, help_text='Indica si el usuario aceptó la certificación de confidencialidad')
     
     # Datos generales para el informe
     evaluation_date = models.DateField(_('Fecha de evaluación'), null=True, blank=True)
@@ -139,7 +193,8 @@ class Evaluation(models.Model):
         verbose_name = _('Evaluación')
         verbose_name_plural = _('Evaluaciones')
         ordering = ['-date_started']
-        unique_together = ['employee', 'year', 'status']
+        # Permitir múltiples evaluaciones por empleado y año, pero solo una por período
+        unique_together = ['employee', 'evaluation_period']
 
     def __str__(self):
         return f"Evaluación {self.year} - {self.employee.full_name} ({self.get_status_display()})"
@@ -156,6 +211,18 @@ class Evaluation(models.Model):
         if total_questions == 0:
             return 0
         return (answered_questions / total_questions) * 100
+    
+    def can_edit(self):
+        """Verifica si la evaluación puede ser editada"""
+        if not self.is_complete:
+            return True  # Los borradores siempre se pueden editar
+        return self.edit_count < 3
+    
+    def get_remaining_edits(self):
+        """Retorna el número de ediciones restantes"""
+        if not self.is_complete:
+            return None  # No aplica para borradores
+        return max(0, 3 - self.edit_count)
 
 
 class Response(models.Model):

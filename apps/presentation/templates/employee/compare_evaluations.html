@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Comparar Evaluaciones{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold mb-1">Comparar Evaluaciones</h1>
+                <p class="text-blue-100 text-sm">{{ employee.full_name }} • {{ employee.company.name }}</p>
+            </div>
+            <a href="{% url 'employee_dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition">
+                ← Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Formulario de Selección -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <h2 class="text-xl font-bold text-slate-800 mb-4">Selecciona las evaluaciones a comparar</h2>
+        <form method="get" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[250px]">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Primera Evaluación</label>
+                <select name="eval1" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    <option value="">Seleccione una evaluación</option>
+                    {% for eval in completed_evaluations %}
+                    <option value="{{ eval.id }}" {% if eval1_selected and eval1_selected.id == eval.id %}selected{% endif %}>
+                        {% if eval.date_completed %}
+                            {{ eval.date_completed|date:"d/m/Y" }} - Año {{ eval.year }}
+                        {% else %}
+                            Año {{ eval.year }}
+                        {% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex-1 min-w-[250px]">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Segunda Evaluación</label>
+                <select name="eval2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    <option value="">Seleccione una evaluación</option>
+                    {% for eval in completed_evaluations %}
+                    <option value="{{ eval.id }}" {% if eval2_selected and eval2_selected.id == eval.id %}selected{% endif %}>
+                        {% if eval.date_completed %}
+                            {{ eval.date_completed|date:"d/m/Y" }} - Año {{ eval.year }}
+                        {% else %}
+                            Año {{ eval.year }}
+                        {% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition">
+                Comparar
+            </button>
+        </form>
+    </div>
+
+    <!-- Resultados de Comparación -->
+    {% if comparison_data %}
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">
+                Comparación: {{ comparison_data.eval1_label }} vs {{ comparison_data.eval2_label }}
+            </h2>
+            <p class="text-slate-600">Evolución de tus evaluaciones a lo largo del tiempo</p>
+        </div>
+
+        <!-- Tabla de Comparación -->
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gradient-to-r from-blue-50 to-blue-100">
+                        <th class="border border-slate-300 px-4 py-3 text-left font-bold text-slate-800">Dimensión</th>
+                        <th class="border border-slate-300 px-4 py-3 text-center font-bold text-slate-800">{{ comparison_data.eval1_label }}</th>
+                        <th class="border border-slate-300 px-4 py-3 text-center font-bold text-slate-800">{{ comparison_data.eval2_label }}</th>
+                        <th class="border border-slate-300 px-4 py-3 text-center font-bold text-slate-800">Cambio</th>
+                        <th class="border border-slate-300 px-4 py-3 text-center font-bold text-slate-800">Tendencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dim in comparison_data.dimensions %}
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="border border-slate-300 px-4 py-3 font-semibold text-slate-800">{{ dim.name }}</td>
+                        
+                        <!-- Año 1 -->
+                        <td class="border border-slate-300 px-4 py-3 text-center">
+                            <div class="flex flex-col items-center">
+                                <span class="text-lg font-bold">{{ dim.score1|default:"-" }}</span>
+                                <span class="text-xs px-2 py-1 rounded mt-1
+                                    {% if dim.risk1 == 'BAJO' %}bg-green-100 text-green-800
+                                    {% elif dim.risk1 == 'MEDIO' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ dim.risk1|default:"-" }}
+                                </span>
+                            </div>
+                        </td>
+                        
+                        <!-- Año 2 -->
+                        <td class="border border-slate-300 px-4 py-3 text-center">
+                            <div class="flex flex-col items-center">
+                                <span class="text-lg font-bold">{{ dim.score2|default:"-" }}</span>
+                                <span class="text-xs px-2 py-1 rounded mt-1
+                                    {% if dim.risk2 == 'BAJO' %}bg-green-100 text-green-800
+                                    {% elif dim.risk2 == 'MEDIO' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ dim.risk2|default:"-" }}
+                                </span>
+                            </div>
+                        </td>
+                        
+                        <!-- Cambio -->
+                        <td class="border border-slate-300 px-4 py-3 text-center">
+                            <span class="text-lg font-bold {% if dim.score_change > 0 %}text-green-600{% elif dim.score_change < 0 %}text-red-600{% else %}text-slate-600{% endif %}">
+                                {% if dim.score_change > 0 %}+{% endif %}{{ dim.score_change }}
+                            </span>
+                        </td>
+                        
+                        <!-- Tendencia -->
+                        <td class="border border-slate-300 px-4 py-3 text-center">
+                            {% if dim.improved %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                                Mejoró
+                            </span>
+                            {% elif dim.score_change < 0 %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                                </svg>
+                                Empeoró
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path>
+                                </svg>
+                                Sin cambio
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    {% if request.GET.eval1 and request.GET.eval2 %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4 mb-6">
+        <p class="text-yellow-800">No se pudieron comparar las evaluaciones seleccionadas. Verifica que ambas estén completadas.</p>
+    </div>
+    {% else %}
+    <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6">
+        <p class="text-blue-800">Selecciona dos evaluaciones para comparar tus resultados.</p>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Información Adicional -->
+    {% if comparison_data %}
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-5 mb-6">
+        <h3 class="text-lg font-bold text-blue-900 mb-2">💡 Interpretación de la Comparación</h3>
+        <div class="space-y-2 text-sm text-gray-700">
+            <p>• <strong>Mejoró:</strong> El puntaje aumentó, lo que indica una mejora en esta dimensión.</p>
+            <p>• <strong>Empeoró:</strong> El puntaje disminuyó, lo que indica que esta dimensión necesita atención.</p>
+            <p>• <strong>Sin cambio:</strong> El puntaje se mantuvo igual entre ambos años.</p>
+            <p>• Los niveles de riesgo (BAJO, MEDIO, ALTO) se muestran para cada evaluación.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

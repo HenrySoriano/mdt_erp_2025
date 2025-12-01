@@ -14,60 +14,494 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
-            background: #f3f4f6;
+            background: #1a1a1a;
             padding: 0;
             margin: 0;
+            overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
+        
+        /* Contenedor de presentación */
+        .presentation-container {
+            position: relative;
+            width: 100%;
+            min-height: 100vh;
+        }
+        
+        /* Contenedor de slides */
+        .slides-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        
+        /* Estilos de slide */
         .slide {
-            max-width: 1400px;
-            min-height: 600px;
+            display: none;
+            width: 100vw;
+            height: 100vh;
             background: white;
-            margin: 20px auto;
-            padding: 40px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            border-radius: 8px;
+            padding: 40px 60px;
+            margin: 0;
+            box-shadow: none;
+            border-radius: 0;
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+            position: fixed;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
         }
+        
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .slide.prev {
+            transform: translateX(-30px);
+        }
+        
+        /* Asegurar que el contenido del slide se ajuste al viewport */
+        .slide > * {
+            flex-shrink: 0;
+        }
+        
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
         .slide-title {
-            font-size: 2.5rem;
+            font-size: 1.75rem;
             font-weight: bold;
             color: #1e3a8a;
-            margin-bottom: 15px;
-            border-bottom: 4px solid #3b82f6;
-            padding-bottom: 10px;
+            margin-bottom: 8px;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 6px;
+            flex-shrink: 0;
         }
+        
         .slide-subtitle {
-            font-size: 1.25rem;
+            font-size: 0.9rem;
             color: #64748b;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
         }
+        
+        /* Ajustar gráficos para que quepan en la pantalla sin scroll */
+        .slide canvas {
+            max-height: calc(100vh - 180px) !important;
+            max-width: 100% !important;
+            width: auto !important;
+            height: auto !important;
+        }
+        
+        /* Ajustar tablas y contenido */
+        .slide table {
+            font-size: 0.75rem;
+        }
+        
+        .slide .grid {
+            gap: 0.5rem;
+        }
+        
+        /* Reducir tamaños de fuente para mejor ajuste */
+        .slide h1 {
+            font-size: 2.5rem !important;
+        }
+        
+        .slide h2 {
+            font-size: 1.5rem !important;
+        }
+        
+        .slide h3 {
+            font-size: 1rem !important;
+        }
+        
+        .slide p {
+            font-size: 0.85rem;
+        }
+        
+        /* Ajustar contenedores de gráficos para que se ajusten al viewport */
+        .slide [style*="height"] {
+            max-height: calc(100vh - 220px) !important;
+            height: auto !important;
+        }
+        
+        /* Asegurar que los contenedores de gráficos se ajusten */
+        .slide .bg-gray-50,
+        .slide .bg-purple-50,
+        .slide .bg-blue-50,
+        .slide .bg-amber-50,
+        .slide .bg-orange-50,
+        .slide .bg-cyan-50,
+        .slide .bg-teal-50,
+        .slide .bg-slate-50 {
+            padding: 0.75rem !important;
+        }
+        
         canvas {
             max-width: 100% !important;
             height: auto !important;
         }
+        
+        /* Controles de navegación */
+        .presentation-controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: opacity 0.3s ease;
+        }
+        
+        .presentation-mode .presentation-controls {
+            opacity: 0.3;
+        }
+        
+        .presentation-mode .presentation-controls:hover {
+            opacity: 1;
+        }
+        
+        .nav-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+        
+        .nav-button:active {
+            transform: scale(0.95);
+        }
+        
+        .nav-button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        /* Indicadores de slide */
+        .slide-indicators {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .indicator.active {
+            background: white;
+            width: 30px;
+            border-radius: 5px;
+        }
+        
+        .indicator:hover {
+            background: rgba(255, 255, 255, 0.7);
+        }
+        
+        /* Contador de slides */
+        .slide-counter {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        /* Botón de pantalla completa */
+        .fullscreen-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        /* Botón de impresión */
+        .print-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+        
+        .print-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        /* Estilos para impresión */
+        @media print {
+            body {
+                background: white;
+            }
+            
+            /* Ocultar controles de navegación */
+            .presentation-controls,
+            .presentation-hint,
+            .download-banner,
+            .info-banner {
+                display: none !important;
+            }
+            
+            /* Mostrar todas las diapositivas */
+            .slide {
+                display: flex !important;
+                position: relative !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 100vh;
+                page-break-after: always;
+                page-break-inside: avoid;
+                opacity: 1 !important;
+                transform: none !important;
+                padding: 40px 60px;
+                margin: 0;
+                box-shadow: none;
+                border: none;
+            }
+            
+            /* Última diapositiva no debe tener page-break-after */
+            .slide:last-child {
+                page-break-after: auto;
+            }
+            
+            /* Asegurar que el contenido se ajuste */
+            .slide-content-wrapper {
+                width: 100%;
+                height: auto;
+                min-height: calc(100vh - 80px);
+            }
+            
+            /* Gráficos y tablas */
+            canvas {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            
+            /* Evitar cortes en tablas */
+            table {
+                page-break-inside: avoid;
+            }
+            
+            /* Ajustar tamaños de fuente para impresión */
+            .slide-title {
+                font-size: 1.5rem;
+            }
+            
+            .slide-subtitle {
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* Botón de descarga flotante */
         .download-button-fixed {
             position: fixed;
             bottom: 30px;
             right: 30px;
-            z-index: 1000;
+            z-index: 1001;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            transition: opacity 0.3s ease;
         }
+        
+        .presentation-mode .download-button-fixed {
+            opacity: 0.3;
+        }
+        
+        .presentation-mode .download-button-fixed:hover {
+            opacity: 1;
+        }
+        
+        /* Banner superior */
+        .info-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            transition: transform 0.3s ease;
+        }
+        
+        .presentation-mode .info-banner {
+            transform: translateY(-100%);
+        }
+        
+        /* Modo presentación - los slides ya están en posición fija */
+        .presentation-mode {
+            overflow: hidden;
+        }
+        
+        .presentation-mode .slide {
+            padding: 50px 60px;
+        }
+        
+        /* Barra de progreso */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: rgba(59, 130, 246, 0.3);
+            z-index: 1002;
+            transition: width 0.3s ease;
+        }
+        
+        /* Instrucciones */
+        .presentation-hint {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 12px;
+            z-index: 998;
+            max-width: 250px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .presentation-hint.show {
+            opacity: 1;
+        }
+        
+        /* Responsive */
         @media (max-width: 1024px) {
             .slide {
-                padding: 30px;
-                margin: 15px;
+                padding: 40px 50px;
             }
             .slide-title {
                 font-size: 2rem;
             }
+            .presentation-controls {
+                padding: 12px 20px;
+                gap: 15px;
+            }
+            .nav-button, .fullscreen-btn, .print-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
         }
+        
         @media (max-width: 768px) {
             .slide {
-                padding: 20px;
-                margin: 10px;
+                padding: 30px 30px;
             }
             .slide-title {
                 font-size: 1.5rem;
+            }
+            .presentation-controls {
+                padding: 10px 15px;
+                gap: 10px;
+                bottom: 20px;
+            }
+            .nav-button, .fullscreen-btn, .print-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+            .slide-indicators {
+                gap: 5px;
+            }
+            .indicator {
+                width: 8px;
+                height: 8px;
+            }
+            .indicator.active {
+                width: 20px;
+            }
+            .slide-counter {
+                font-size: 12px;
+                min-width: 60px;
+            }
+        }
+        
+        /* Animación de entrada */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-30px);
             }
         }
     </style>
@@ -84,7 +518,7 @@
 </a>
 
 <!-- Banner Superior Informativo -->
-<div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 shadow-lg sticky top-0 z-50">
+<div class="info-banner bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 shadow-lg">
     <div class="max-w-7xl mx-auto">
         <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
@@ -98,28 +532,40 @@
         </div>
         <div class="mt-4 bg-white/20 rounded-lg p-4">
             <p class="text-sm">
-                ℹ️ Esta es una vista previa de cómo se verá cada diapositiva del PowerPoint. 
-                Los gráficos son idénticos a los de la página web. Desplázate hacia abajo para ver todas las diapositivas.
+                🎯 <strong>Modo Presentación:</strong> Usa las flechas ← → o el teclado para navegar. 
+                Presiona <kbd class="bg-white/20 px-2 py-1 rounded">F</kbd> para pantalla completa. 
+                <kbd class="bg-white/20 px-2 py-1 rounded">ESC</kbd> para salir.
+                <kbd class="bg-white/20 px-2 py-1 rounded">Ctrl+P</kbd> para imprimir.
             </p>
         </div>
     </div>
 </div>
 
+<!-- Barra de progreso -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Contenedor de presentación -->
+<div class="presentation-container" id="presentationContainer">
+    <div class="slides-wrapper">
+
 <!-- ==================== SLIDE 1: PORTADA ==================== -->
-<div id="slide-portada" class="slide bg-gradient-to-br from-blue-600 to-indigo-800 flex flex-col justify-center items-center text-center min-h-[500px]">
-    <h1 class="text-6xl md:text-7xl font-bold text-white mb-8">Informe de Evaluación de<br>Riesgo Psicosocial</h1>
-    <div class="text-3xl md:text-4xl text-blue-100 font-semibold mb-12">
-        {{ company.name|default:"Resultados Globales" }}
-    </div>
-    <div class="text-2xl md:text-3xl text-white">Año {{ year }}</div>
-    <div class="mt-12 text-xl md:text-2xl text-blue-200">
-        Total de Evaluaciones: {{ total_evaluations_count }}
+<div id="slide-portada" class="slide active bg-gradient-to-br from-blue-600 to-indigo-800 flex flex-col justify-center items-center text-center">
+    <div class="slide-content-wrapper">
+        <h1 class="text-5xl md:text-6xl font-bold text-white mb-6">Informe de Evaluación de<br>Riesgo Psicosocial</h1>
+        <div class="text-2xl md:text-3xl text-blue-100 font-semibold mb-8">
+            {{ company.name|default:"Resultados Globales" }}
+        </div>
+        <div class="text-xl md:text-2xl text-white mb-6">Año {{ year }}</div>
+        <div class="text-lg md:text-xl text-blue-200">
+            Total de Evaluaciones: {{ total_evaluations_count }}
+        </div>
     </div>
 </div>
 
 <!-- ==================== SLIDE 2: RESULTADO GLOBAL ==================== -->
 <div id="slide-resultado-global" class="slide">
-    <h2 class="slide-title">Resultado Global de la Evaluación</h2>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Resultado Global de la Evaluación</h2>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <!-- Información textual -->
@@ -160,189 +606,402 @@
             </div>
         </div>
     </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 
 <!-- ==================== SLIDE 3: RESULTADOS POR DIMENSIÓN ==================== -->
 <div id="slide-dimensiones" class="slide">
-    <h2 class="slide-title">Resultados por Dimensión</h2>
-    <p class="slide-subtitle">Distribución de riesgo en las 14 dimensiones evaluadas</p>
-    <div style="height: 600px;">
-        <canvas id="adminDimensionsChart"></canvas>
-    </div>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Resultados por Dimensión</h2>
+        <p class="slide-subtitle">Distribución de riesgo en las 14 dimensiones evaluadas</p>
+        <div style="flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;">
+            <canvas id="adminDimensionsChart" style="max-height: 100%; width: auto !important;"></canvas>
+        </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 
 {% if demographic_data.gender %}
 <!-- ==================== SLIDE 4: ANÁLISIS POR GÉNERO ==================== -->
 <div id="slide-genero" class="slide">
-    <h2 class="slide-title">Análisis por Género</h2>
-    <p class="slide-subtitle">Comparación de niveles de riesgo entre grupos</p>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-        {% for group in demographic_data.gender %}
-        <div class="bg-gray-50 rounded-lg p-6">
-            <h3 class="text-2xl font-bold text-center mb-4 text-gray-700">{{ group.label }}<br><span class="text-lg text-gray-500">({{ group.count }} personas)</span></h3>
-            <div style="height: 500px;">
-                <canvas id="chart-gender-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Género</h2>
+        <p class="slide-subtitle">Comparación de niveles de riesgo entre grupos</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.gender %}
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="text-xl font-bold text-center mb-2 text-gray-700">{{ group.label }}<br><span class="text-sm text-gray-500">({{ group.count }} personas)</span></h3>
+                <div style="height: calc((100vh - 300px) / 2); max-height: 400px;">
+                    <canvas id="chart-gender-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 {% if demographic_data.age_range %}
 <!-- ==================== SLIDE 5: ANÁLISIS POR EDAD ==================== -->
 <div id="slide-edad" class="slide">
-    <h2 class="slide-title">Análisis por Rango de Edad</h2>
-    <p class="slide-subtitle">Distribución de riesgo según grupo etario - {{ demographic_data.age_range|length }} grupos</p>
-    <div class="grid grid-cols-1 {% if demographic_data.age_range|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
-        {% for group in demographic_data.age_range %}
-        <div class="bg-purple-50 rounded-lg p-6 border border-purple-200">
-            <h3 class="text-xl font-bold text-purple-900 mb-2">{{ group.label }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
-            <div style="height: 450px;">
-                <canvas id="chart-age-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Rango de Edad</h2>
+        <p class="slide-subtitle">Distribución de riesgo según grupo etario - {{ demographic_data.age_range|length }} grupos</p>
+        <div class="grid grid-cols-1 {% if demographic_data.age_range|length > 1 %}lg:grid-cols-2{% endif %} gap-4 mt-2" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.age_range %}
+            <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <h3 class="text-lg font-bold text-purple-900 mb-1">{{ group.label }}</h3>
+                <p class="text-xs text-gray-600 mb-2">{{ group.count }} {% if group.count == 1 %}participante{% else %}participantes{% endif %}</p>
+                <div style="height: calc((100vh - 300px) / {% if demographic_data.age_range|length > 1 %}2{% else %}1{% endif %}); max-height: 400px;">
+                    <canvas id="chart-age-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 {% if demographic_data.work_area %}
 <!-- ==================== SLIDE 6: ANÁLISIS POR ÁREA DE TRABAJO ==================== -->
 <div id="slide-area" class="slide">
-    <h2 class="slide-title">Análisis por Área de Trabajo</h2>
-    <p class="slide-subtitle">Comparación de riesgo entre departamentos - {{ demographic_data.work_area|length }} áreas</p>
-    <div class="grid grid-cols-1 {% if demographic_data.work_area|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
-        {% for group in demographic_data.work_area %}
-        <div class="bg-blue-50 rounded-lg p-6 border border-blue-200">
-            <h3 class="text-xl font-bold text-blue-900 mb-2">{{ group.label }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
-            <div style="height: 450px;">
-                <canvas id="chart-area-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Área de Trabajo</h2>
+        <p class="slide-subtitle">Comparación de riesgo entre departamentos - {{ demographic_data.work_area|length }} áreas</p>
+        <div class="grid grid-cols-1 {% if demographic_data.work_area|length > 1 %}lg:grid-cols-2{% endif %} gap-4 mt-2" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.work_area %}
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <h3 class="text-lg font-bold text-blue-900 mb-1">{{ group.label }}</h3>
+                <p class="text-xs text-gray-600 mb-2">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+                <div style="height: calc((100vh - 300px) / {% if demographic_data.work_area|length > 1 %}2{% else %}1{% endif %}); max-height: 400px;">
+                    <canvas id="chart-area-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 {% if demographic_data.education_level %}
 <!-- ==================== SLIDE 7: ANÁLISIS POR EDUCACIÓN ==================== -->
 <div id="slide-educacion" class="slide">
-    <h2 class="slide-title">Análisis por Nivel de Educación</h2>
-    <p class="slide-subtitle">Distribución de riesgo según formación académica - {{ demographic_data.education_level|length }} niveles</p>
-    <div class="grid grid-cols-1 {% if demographic_data.education_level|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
-        {% for group in demographic_data.education_level %}
-        <div class="bg-amber-50 rounded-lg p-6 border border-amber-200">
-            <h3 class="text-xl font-bold text-amber-900 mb-2">{{ group.label }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
-            <div style="height: 450px;">
-                <canvas id="chart-education-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Nivel de Educación</h2>
+        <p class="slide-subtitle">Distribución de riesgo según formación académica - {{ demographic_data.education_level|length }} niveles</p>
+        <div class="grid grid-cols-1 {% if demographic_data.education_level|length > 1 %}lg:grid-cols-2{% endif %} gap-4 mt-2" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.education_level %}
+            <div class="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                <h3 class="text-lg font-bold text-amber-900 mb-1">{{ group.label }}</h3>
+                <p class="text-xs text-gray-600 mb-2">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+                <div style="height: calc((100vh - 300px) / {% if demographic_data.education_level|length > 1 %}2{% else %}1{% endif %}); max-height: 400px;">
+                    <canvas id="chart-education-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 {% if demographic_data.experience_range %}
 <!-- ==================== SLIDE 8: ANÁLISIS POR ANTIGÜEDAD ==================== -->
 <div id="slide-experiencia" class="slide">
-    <h2 class="slide-title">Análisis por Antigüedad</h2>
-    <p class="slide-subtitle">Distribución de riesgo según años de experiencia - {{ demographic_data.experience_range|length }} rangos</p>
-    <div class="grid grid-cols-1 {% if demographic_data.experience_range|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
-        {% for group in demographic_data.experience_range %}
-        <div class="bg-orange-50 rounded-lg p-6 border border-orange-200">
-            <h3 class="text-xl font-bold text-orange-900 mb-2">{{ group.label }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
-            <div style="height: 450px;">
-                <canvas id="chart-experience-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Antigüedad</h2>
+        <p class="slide-subtitle">Distribución de riesgo según años de experiencia - {{ demographic_data.experience_range|length }} rangos</p>
+        <div class="grid grid-cols-1 {% if demographic_data.experience_range|length > 1 %}lg:grid-cols-2{% endif %} gap-4 mt-2" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.experience_range %}
+            <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <h3 class="text-lg font-bold text-orange-900 mb-1">{{ group.label }}</h3>
+                <p class="text-xs text-gray-600 mb-2">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+                <div style="height: calc((100vh - 300px) / {% if demographic_data.experience_range|length > 1 %}2{% else %}1{% endif %}); max-height: 400px;">
+                    <canvas id="chart-experience-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 {% if demographic_data.ethnicity %}
 <!-- ==================== SLIDE 9: ANÁLISIS POR ETNIA ==================== -->
 <div id="slide-etnia" class="slide">
-    <h2 class="slide-title">Análisis por Etnia</h2>
-    <p class="slide-subtitle">Distribución de riesgo según grupo étnico - {{ demographic_data.ethnicity|length }} grupos</p>
-    <div class="grid grid-cols-1 {% if demographic_data.ethnicity|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
-        {% for group in demographic_data.ethnicity %}
-        <div class="bg-cyan-50 rounded-lg p-6 border border-cyan-200">
-            <h3 class="text-xl font-bold text-cyan-900 mb-2">{{ group.label }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
-            <div style="height: 450px;">
-                <canvas id="chart-ethnicity-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Etnia</h2>
+        <p class="slide-subtitle">Distribución de riesgo según grupo étnico - {{ demographic_data.ethnicity|length }} grupos</p>
+        <div class="grid grid-cols-1 {% if demographic_data.ethnicity|length > 1 %}lg:grid-cols-2{% endif %} gap-4 mt-2" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.ethnicity %}
+            <div class="bg-cyan-50 rounded-lg p-4 border border-cyan-200">
+                <h3 class="text-lg font-bold text-cyan-900 mb-1">{{ group.label }}</h3>
+                <p class="text-xs text-gray-600 mb-2">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+                <div style="height: calc((100vh - 300px) / {% if demographic_data.ethnicity|length > 1 %}2{% else %}1{% endif %}); max-height: 400px;">
+                    <canvas id="chart-ethnicity-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 {% if demographic_data.province %}
 <!-- ==================== SLIDE 10: ANÁLISIS POR PROVINCIA ==================== -->
 <div id="slide-provincia" class="slide">
-    <h2 class="slide-title">Análisis por Provincia</h2>
-    <p class="slide-subtitle">Distribución de riesgo por ubicación geográfica - {{ demographic_data.province|length }} provincias</p>
-    <div class="grid grid-cols-1 {% if demographic_data.province|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
-        {% for group in demographic_data.province %}
-        <div class="bg-teal-50 rounded-lg p-6 border border-teal-200">
-            <h3 class="text-xl font-bold text-teal-900 mb-2">{{ group.label }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
-            <div style="height: 450px;">
-                <canvas id="chart-province-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Provincia</h2>
+        <p class="slide-subtitle">Distribución de riesgo por ubicación geográfica - {{ demographic_data.province|length }} provincias</p>
+        <div class="grid grid-cols-1 {% if demographic_data.province|length > 1 %}lg:grid-cols-2{% endif %} gap-4 mt-2" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.province %}
+            <div class="bg-teal-50 rounded-lg p-4 border border-teal-200">
+                <h3 class="text-lg font-bold text-teal-900 mb-1">{{ group.label }}</h3>
+                <p class="text-xs text-gray-600 mb-2">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+                <div style="height: calc((100vh - 300px) / {% if demographic_data.province|length > 1 %}2{% else %}1{% endif %}); max-height: 400px;">
+                    <canvas id="chart-province-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 {% if demographic_data.city %}
 <!-- ==================== SLIDE 11: ANÁLISIS POR CIUDAD ==================== -->
 <div id="slide-ciudad" class="slide">
-    <h2 class="slide-title">Análisis por Ciudad</h2>
-    <p class="slide-subtitle">Comparación de riesgo entre ciudades - {{ demographic_data.city|length }} ciudades</p>
-    <div class="grid grid-cols-1 {% if demographic_data.city|length > 1 %}lg:grid-cols-2{% endif %} gap-8 mt-6">
-        {% for group in demographic_data.city %}
-        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
-            <h3 class="text-xl font-bold text-slate-900 mb-2">{{ group.label }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
-            <div style="height: 450px;">
-                <canvas id="chart-city-{{ forloop.counter }}"></canvas>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Análisis por Ciudad</h2>
+        <p class="slide-subtitle">Comparación de riesgo entre ciudades - {{ demographic_data.city|length }} ciudades</p>
+        <div class="grid grid-cols-1 {% if demographic_data.city|length > 1 %}lg:grid-cols-2{% endif %} gap-4 mt-2" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in demographic_data.city %}
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-900 mb-1">{{ group.label }}</h3>
+                <p class="text-xs text-gray-600 mb-2">{{ group.count }} {% if group.count == 1 %}persona{% else %}personas{% endif %}</p>
+                <div style="height: calc((100vh - 300px) / {% if demographic_data.city|length > 1 %}2{% else %}1{% endif %}); max-height: 400px;">
+                    <canvas id="chart-city-{{ forloop.counter }}"></canvas>
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
 {% endif %}
 
 <!-- ==================== SLIDE 12: RECOMENDACIONES ==================== -->
 <div id="slide-recomendaciones" class="slide">
-    <h2 class="slide-title">Recomendaciones Estratégicas</h2>
-    <div class="bg-blue-50 rounded-xl p-8 border-l-4 border-blue-500">
-        <div class="space-y-4">
-            {% for rec in general_recommendations|slice:":8" %}
-            <div class="flex items-start space-x-3">
-                <span class="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">{{ forloop.counter }}</span>
-                <p class="text-base text-gray-700 leading-relaxed">{{ rec }}</p>
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">Recomendaciones Estratégicas</h2>
+        <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500" style="flex: 1; min-height: 0; overflow-y: auto;">
+            <div class="space-y-3">
+                {% for rec in general_recommendations|slice:":10" %}
+                <div class="flex items-start space-x-3">
+                    <span class="flex-shrink-0 w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">{{ forloop.counter }}</span>
+                    <p class="text-sm text-gray-700 leading-relaxed">{{ rec }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div> <!-- slide-content-wrapper -->
+</div>
+
+<!-- ==================== SLIDE 13: INDICADORES DE CUMPLIMIENTO - RESUMEN ==================== -->
+<div id="slide-cumplimiento-resumen" class="slide">
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">✅ Indicadores de Cumplimiento</h2>
+        <p class="slide-subtitle">Control de participación y seguimiento de evaluaciones programadas vs completadas</p>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" style="flex-shrink: 0;">
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-indigo-200">
+                <div class="text-xs font-medium text-gray-600 mb-1">Programados</div>
+                <div class="text-2xl font-bold text-slate-800">{{ total_programmed }}</div>
+            </div>
+            <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                <div class="text-xs font-medium text-gray-600 mb-1">Completados</div>
+                <div class="text-2xl font-bold text-green-700">{{ total_completed }}</div>
+            </div>
+            <div class="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-lg p-4 border border-yellow-200">
+                <div class="text-xs font-medium text-gray-600 mb-1">Pendientes</div>
+                <div class="text-2xl font-bold text-yellow-700">{{ total_pending }}</div>
+            </div>
+            <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                <div class="text-xs font-medium text-gray-600 mb-1">Cumplimiento</div>
+                <div class="text-2xl font-bold text-purple-900">{{ completion_percentage|floatformat:1 }}%</div>
+            </div>
+        </div>
+        
+        <!-- Barra de progreso general -->
+        <div class="mb-4" style="flex-shrink: 0;">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-base font-bold text-slate-700">Progreso General</h3>
+                <span class="text-xs font-semibold text-gray-600">{{ total_completed }}/{{ total_programmed }} {{ completion_percentage|floatformat:1 }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-5 overflow-hidden shadow-inner relative">
+                <div class="bg-gradient-to-r from-green-500 to-emerald-600 h-full rounded-full text-white text-xs font-bold transition-all duration-500 flex items-center justify-center" 
+                     style="width: {{ completion_percentage }}%; position: absolute; top: 0; left: 0; min-width: 0;">
+                    {% if completion_percentage > 10 %}<span>{{ completion_percentage|floatformat:1 }}%</span>{% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gráfico de cumplimiento -->
+        <div style="flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;">
+            <canvas id="complianceChart" style="max-height: calc(100vh - 350px); max-width: 100%;"></canvas>
+        </div>
+    </div> <!-- slide-content-wrapper -->
+</div>
+
+<!-- ==================== SLIDE 14: CUMPLIMIENTO POR GÉNERO ==================== -->
+{% if completion_data.gender %}
+<div id="slide-cumplimiento-genero" class="slide">
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">👥 Cumplimiento por Género</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3" style="flex: 1; min-height: 0; overflow-y: auto;">
+            {% for group in completion_data.gender %}
+            <div class="bg-white border-2 border-slate-200 rounded-lg p-3">
+                <h4 class="font-bold text-slate-900 mb-2 text-sm">{{ group.label }}</h4>
+                <div class="space-y-1 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Programados:</span>
+                        <span class="font-semibold text-indigo-700">{{ group.programmed }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Completados:</span>
+                        <span class="font-semibold text-green-700">{{ group.completed }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Pendientes:</span>
+                        <span class="font-semibold text-yellow-700">{{ group.pending }}</span>
+                    </div>
+                    <div class="pt-2 border-t">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-gray-600 font-medium">Cumplimiento:</span>
+                            <span class="font-bold text-xs {% if group.completion_rate >= 80 %}text-green-700{% elif group.completion_rate >= 50 %}text-yellow-700{% else %}text-red-700{% endif %}">
+                                {{ group.completion_rate|floatformat:1 }}%
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5">
+                            <div class="{% if group.completion_rate >= 80 %}bg-green-500{% elif group.completion_rate >= 50 %}bg-yellow-500{% else %}bg-red-500{% endif %} h-1.5 rounded-full transition-all"
+                                 style="width: {{ group.completion_rate }}%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             {% endfor %}
         </div>
-    </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
+{% endif %}
 
-<!-- Mensaje Final -->
-<div class="max-w-7xl mx-auto my-8 p-6 bg-green-50 border-l-4 border-green-500 rounded-lg">
-    <p class="text-lg text-gray-700">
-        ✅ <strong>Vista previa completa.</strong> Haz clic en el botón flotante naranja para descargar el PowerPoint con todos estos gráficos.
-    </p>
+<!-- ==================== SLIDE 15: CUMPLIMIENTO POR EDAD ==================== -->
+{% if completion_data.age_range %}
+<div id="slide-cumplimiento-edad" class="slide">
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">🎂 Cumplimiento por Rango de Edad</h2>
+        <div class="overflow-x-auto" style="flex: 1; min-height: 0; overflow-y: auto;">
+            <table class="min-w-full divide-y divide-gray-200 text-xs">
+                <thead class="bg-purple-600">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-white uppercase">Rango de Edad</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Programados</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Completados</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Pendientes</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Cumplimiento</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for group in completion_data.age_range %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 font-semibold text-slate-900">{{ group.label }}</td>
+                        <td class="px-3 py-2 text-center text-indigo-700 font-medium">{{ group.programmed }}</td>
+                        <td class="px-3 py-2 text-center text-green-700 font-medium">{{ group.completed }}</td>
+                        <td class="px-3 py-2 text-center text-yellow-700 font-medium">{{ group.pending }}</td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-bold {% if group.completion_rate >= 80 %}bg-green-100 text-green-800{% elif group.completion_rate >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ group.completion_rate|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div> <!-- slide-content-wrapper -->
 </div>
+{% endif %}
+
+<!-- ==================== SLIDE 16: CUMPLIMIENTO POR ÁREA ==================== -->
+{% if completion_data.work_area %}
+<div id="slide-cumplimiento-area" class="slide">
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">💼 Cumplimiento por Área de Trabajo</h2>
+        <div class="overflow-x-auto" style="flex: 1; min-height: 0; overflow-y: auto;">
+            <table class="min-w-full divide-y divide-gray-200 text-xs">
+                <thead class="bg-orange-600">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-white uppercase">Área</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Programados</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Completados</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Pendientes</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Cumplimiento</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for group in completion_data.work_area %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 font-semibold text-slate-900">{{ group.label }}</td>
+                        <td class="px-3 py-2 text-center text-indigo-700 font-medium">{{ group.programmed }}</td>
+                        <td class="px-3 py-2 text-center text-green-700 font-medium">{{ group.completed }}</td>
+                        <td class="px-3 py-2 text-center text-yellow-700 font-medium">{{ group.pending }}</td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-bold {% if group.completion_rate >= 80 %}bg-green-100 text-green-800{% elif group.completion_rate >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ group.completion_rate|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div> <!-- slide-content-wrapper -->
+</div>
+{% endif %}
+
+<!-- ==================== SLIDE 17: CUMPLIMIENTO POR ANTIGÜEDAD ==================== -->
+{% if completion_data.experience_range %}
+<div id="slide-cumplimiento-experiencia" class="slide">
+    <div class="slide-content-wrapper">
+        <h2 class="slide-title">⏱️ Cumplimiento por Antigüedad</h2>
+        <div class="overflow-x-auto" style="flex: 1; min-height: 0; overflow-y: auto;">
+            <table class="min-w-full divide-y divide-gray-200 text-xs">
+                <thead class="bg-green-600">
+                    <tr>
+                        <th class="px-3 py-2 text-left text-xs font-medium text-white uppercase">Rango de Antigüedad</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Programados</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Completados</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Pendientes</th>
+                        <th class="px-3 py-2 text-center text-xs font-medium text-white uppercase">Cumplimiento</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for group in completion_data.experience_range %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 font-semibold text-slate-900">{{ group.label }}</td>
+                        <td class="px-3 py-2 text-center text-indigo-700 font-medium">{{ group.programmed }}</td>
+                        <td class="px-3 py-2 text-center text-green-700 font-medium">{{ group.completed }}</td>
+                        <td class="px-3 py-2 text-center text-yellow-700 font-medium">{{ group.pending }}</td>
+                        <td class="px-3 py-2 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-bold {% if group.completion_rate >= 80 %}bg-green-100 text-green-800{% elif group.completion_rate >= 50 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ group.completion_rate|floatformat:1 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div> <!-- slide-content-wrapper -->
+</div>
+{% endif %}
 
 <!-- ==================== JAVASCRIPT: GRÁFICOS ==================== -->
 <script>
@@ -873,8 +1532,354 @@ console.log('📈 Procesando gráficos de CIUDAD - {{ demographic_data.city|leng
 {% endfor %}
 {% endif %}
 
+// ==================== GRÁFICO DE CUMPLIMIENTO ====================
+(function() {
+    const canvas = document.getElementById('complianceChart');
+    if (!canvas) {
+        console.log('⚠️ Canvas complianceChart no encontrado');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Datos de cumplimiento
+    const labels = ['Programados', 'Completados', 'Pendientes'];
+    const data = [{{ total_programmed }}, {{ total_completed }}, {{ total_pending }}];
+    const colors = ['#3b82f6', '#10b981', '#eab308'];
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 12 },
+                        padding: 15
+                    }
+                },
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 14 },
+                    formatter: (value, ctx) => {
+                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return value + '\n(' + percentage + '%)';
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Gráfico de cumplimiento creado');
+})();
+
 console.log('✅ Todos los gráficos cargados correctamente');
+
+// ==================== SISTEMA DE PRESENTACIÓN ESTILO POWERPOINT ====================
+(function() {
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+    let isPresentationMode = false;
+    
+    if (totalSlides === 0) {
+        console.warn('⚠️ No se encontraron slides');
+        return;
+    }
+    
+    // Crear controles de navegación
+    const controlsHTML = `
+        <button class="nav-button" id="prevBtn" aria-label="Slide anterior">←</button>
+        <div class="slide-indicators" id="indicators"></div>
+        <div class="slide-counter">
+            <span id="currentSlideNum">1</span> / <span id="totalSlides">${totalSlides}</span>
+        </div>
+        <button class="nav-button" id="nextBtn" aria-label="Slide siguiente">→</button>
+        <button class="fullscreen-btn" id="fullscreenBtn" aria-label="Pantalla completa" title="Pantalla completa (F)">⛶</button>
+        <button class="print-btn" id="printBtn" aria-label="Imprimir" title="Imprimir diapositivas (Ctrl+P)">🖨️</button>
+    `;
+    
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'presentation-controls';
+    controlsContainer.innerHTML = controlsHTML;
+    document.body.appendChild(controlsContainer);
+    
+    // Crear indicadores
+    const indicatorsContainer = document.getElementById('indicators');
+    slides.forEach((_, index) => {
+        const indicator = document.createElement('div');
+        indicator.className = `indicator ${index === 0 ? 'active' : ''}`;
+        indicator.addEventListener('click', () => goToSlide(index));
+        indicatorsContainer.appendChild(indicator);
+    });
+    
+    // Referencias a elementos
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const printBtn = document.getElementById('printBtn');
+    const currentSlideNum = document.getElementById('currentSlideNum');
+    const totalSlidesSpan = document.getElementById('totalSlides');
+    const progressBar = document.getElementById('progressBar');
+    const presentationContainer = document.getElementById('presentationContainer');
+    
+    totalSlidesSpan.textContent = totalSlides;
+    
+    // Función para ir a un slide específico
+    function goToSlide(index) {
+        if (index < 0 || index >= totalSlides) return;
+        
+        // Remover clase active de todos los slides
+        slides.forEach(slide => {
+            slide.classList.remove('active', 'prev');
+        });
+        
+        // Remover clase active de todos los indicadores
+        document.querySelectorAll('.indicator').forEach(ind => {
+            ind.classList.remove('active');
+        });
+        
+        // Agregar clase active al slide actual
+        slides[index].classList.add('active');
+        document.querySelectorAll('.indicator')[index].classList.add('active');
+        
+        currentSlide = index;
+        currentSlideNum.textContent = index + 1;
+        
+        // Actualizar barra de progreso
+        const progress = ((index + 1) / totalSlides) * 100;
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+        }
+        
+        // Actualizar estado de botones
+        if (prevBtn) prevBtn.disabled = index === 0;
+        if (nextBtn) nextBtn.disabled = index === totalSlides - 1;
+        
+        // Scroll al inicio del slide
+        slides[index].scrollTop = 0;
+    }
+    
+    // Función para siguiente slide
+    function nextSlide() {
+        if (currentSlide < totalSlides - 1) {
+            goToSlide(currentSlide + 1);
+        }
+    }
+    
+    // Función para slide anterior
+    function prevSlide() {
+        if (currentSlide > 0) {
+            goToSlide(currentSlide - 1);
+        }
+    }
+    
+    // Función para alternar modo presentación
+    function togglePresentationMode() {
+        isPresentationMode = !isPresentationMode;
+        document.body.classList.toggle('presentation-mode', isPresentationMode);
+        
+        if (isPresentationMode) {
+            // Entrar en pantalla completa si es posible
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('Error al entrar en pantalla completa:', err);
+                });
+            }
+            if (fullscreenBtn) {
+                fullscreenBtn.innerHTML = '⛶';
+                fullscreenBtn.title = 'Salir de pantalla completa (ESC)';
+            }
+        } else {
+            // Salir de pantalla completa
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+            if (fullscreenBtn) {
+                fullscreenBtn.innerHTML = '⛶';
+                fullscreenBtn.title = 'Pantalla completa (F)';
+            }
+        }
+    }
+    
+    // Función para imprimir todas las diapositivas
+    function printSlides() {
+        // Guardar el estado actual
+        const currentSlideIndex = currentSlide;
+        const wasPresentationMode = isPresentationMode;
+        
+        // Preparar para impresión: mostrar todas las diapositivas
+        slides.forEach((slide, index) => {
+            slide.classList.add('active');
+            slide.style.display = 'flex';
+            slide.style.position = 'relative';
+            slide.style.height = 'auto';
+            slide.style.minHeight = '100vh';
+        });
+        
+        // Ocultar controles temporalmente
+        const controls = document.querySelector('.presentation-controls');
+        const hint = document.querySelector('.presentation-hint');
+        const infoBanner = document.querySelector('.info-banner');
+        const downloadBtn = document.querySelector('.download-button-fixed');
+        
+        if (controls) controls.style.display = 'none';
+        if (hint) hint.style.display = 'none';
+        if (infoBanner) infoBanner.style.display = 'none';
+        if (downloadBtn) downloadBtn.style.display = 'none';
+        
+        // Esperar un momento para que se rendericen los gráficos
+        setTimeout(() => {
+            // Llamar a la función de impresión del navegador
+            window.print();
+            
+            // Restaurar el estado después de imprimir
+            setTimeout(() => {
+                // Restaurar slides a su estado original
+                slides.forEach((slide, index) => {
+                    slide.classList.remove('active');
+                    slide.style.display = '';
+                    slide.style.position = '';
+                    slide.style.height = '';
+                    slide.style.minHeight = '';
+                    if (index !== currentSlideIndex) {
+                        slide.style.display = 'none';
+                    }
+                });
+                
+                // Restaurar slide actual
+                goToSlide(currentSlideIndex);
+                
+                // Mostrar controles nuevamente
+                if (controls) controls.style.display = '';
+                if (hint) hint.style.display = '';
+                if (infoBanner) infoBanner.style.display = '';
+                if (downloadBtn) downloadBtn.style.display = '';
+                
+                // Restaurar modo presentación si estaba activo
+                if (wasPresentationMode) {
+                    isPresentationMode = true;
+                    document.body.classList.add('presentation-mode');
+                }
+            }, 100);
+        }, 500);
+    }
+    
+    // Event listeners
+    if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+    if (nextBtn) nextBtn.addEventListener('click', nextSlide);
+    if (fullscreenBtn) fullscreenBtn.addEventListener('click', togglePresentationMode);
+    if (printBtn) printBtn.addEventListener('click', printSlides);
+    
+    // Navegación con teclado
+    document.addEventListener('keydown', (e) => {
+        // Ignorar si estamos escribiendo en un input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+        
+        // Atajo para imprimir (Ctrl+P o Cmd+P) - verificar primero
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+            e.preventDefault();
+            printSlides();
+            return;
+        }
+        
+        switch(e.key) {
+            case 'ArrowRight':
+            case ' ':
+            case 'Enter':
+                e.preventDefault();
+                nextSlide();
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                prevSlide();
+                break;
+            case 'f':
+            case 'F':
+                e.preventDefault();
+                togglePresentationMode();
+                break;
+            case 'Escape':
+                if (isPresentationMode) {
+                    e.preventDefault();
+                    togglePresentationMode();
+                }
+                break;
+            case 'Home':
+                e.preventDefault();
+                goToSlide(0);
+                break;
+            case 'End':
+                e.preventDefault();
+                goToSlide(totalSlides - 1);
+                break;
+        }
+    });
+    
+    // Detectar cambios en pantalla completa
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement && isPresentationMode) {
+            isPresentationMode = false;
+            document.body.classList.remove('presentation-mode');
+        }
+    });
+    
+    // Inicializar
+    goToSlide(0);
+    
+    // Mostrar hint inicial
+    setTimeout(() => {
+        const hint = document.createElement('div');
+        hint.className = 'presentation-hint';
+        hint.innerHTML = `
+            <strong>💡 Atajos de teclado:</strong><br>
+            ← → Navegar slides<br>
+            Espacio Siguiente<br>
+            F Pantalla completa<br>
+            Ctrl+P Imprimir<br>
+            ESC Salir
+        `;
+        document.body.appendChild(hint);
+        
+        setTimeout(() => {
+            hint.classList.add('show');
+            setTimeout(() => {
+                hint.classList.remove('show');
+                setTimeout(() => hint.remove(), 300);
+            }, 5000);
+        }, 1000);
+    }, 500);
+    
+    console.log('✅ Sistema de presentación inicializado con ' + totalSlides + ' slides');
+})();
 </script>
+
+    </div> <!-- slides-wrapper -->
+</div> <!-- presentation-container -->
 
 </body>
 </html>

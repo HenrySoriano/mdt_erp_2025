@@ -5,6 +5,62 @@
 
 {% block content %}
 <div class="max-w-5xl mx-auto">
+    <!-- Modal de Confidencialidad -->
+    <div id="confidentialityModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 {% if evaluation.confidentiality_accepted %}hidden{% endif %}">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto">
+            <div class="text-center mb-6">
+                <div class="bg-blue-100 rounded-full p-4 inline-block mb-4">
+                    <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Certificación de Confidencialidad</h2>
+                <p class="text-slate-600">Antes de comenzar, lee y acepta la siguiente declaración</p>
+            </div>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-600 p-6 mb-6 rounded-lg">
+                <h3 class="text-xl font-bold text-blue-900 mb-4">🔒 Compromiso de Confidencialidad</h3>
+                <div class="space-y-4 text-slate-700">
+                    <p class="leading-relaxed">
+                        <strong>Certifico que:</strong>
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 ml-4">
+                        <li>Todas mis respuestas serán tratadas con <strong>estricta confidencialidad</strong>.</li>
+                        <li>Los datos proporcionados serán utilizados <strong>únicamente</strong> para fines de evaluación de riesgo psicosocial.</li>
+                        <li>Mi información personal <strong>no será compartida</strong> con terceros sin mi consentimiento.</li>
+                        <li>Los resultados serán presentados de forma <strong>agregada y anónima</strong> en los reportes de la empresa.</li>
+                        <li>Entiendo que puedo <strong>ver mis resultados</strong> antes de enviar la evaluación definitivamente.</li>
+                        <li>Comprendo que puedo <strong>editar mis respuestas</strong> hasta 3 veces después de completar la evaluación.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-lg">
+                <p class="text-sm text-yellow-800">
+                    <strong>⚠️ Importante:</strong> Responde con <strong>sinceridad y honestidad</strong>. 
+                    Tus respuestas ayudan a identificar áreas de mejora en el ambiente laboral. 
+                    Recuerda que puedes ver tus resultados antes de enviar y editarlos si es necesario.
+                </p>
+            </div>
+            
+            <div class="flex items-center mb-6">
+                <input type="checkbox" id="acceptConfidentiality" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <label for="acceptConfidentiality" class="ml-3 text-slate-700">
+                    <strong>Acepto</strong> la certificación de confidencialidad y me comprometo a responder con honestidad.
+                </label>
+            </div>
+            
+            <div class="flex gap-4">
+                <button type="button" id="acceptButton" disabled class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition">
+                    Aceptar y Continuar
+                </button>
+                <a href="{% url 'employee_dashboard' %}" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg text-center transition">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </div>
+    
     <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
         <div class="flex justify-between items-center mb-6">
             <div>
@@ -22,6 +78,7 @@
     </div>
     <form method="post" id="evaluationForm" {% if is_superuser_view and not is_empty_preview %}onsubmit="return false;"{% elif is_superuser_view and is_empty_preview %}onsubmit="event.preventDefault(); return false;"{% endif %}>
         {% csrf_token %}
+        <input type="hidden" name="confidentiality_accepted" value="true" id="confidentialityAccepted">
         
         <!-- Sección de Datos Generales -->
         <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
@@ -39,7 +96,7 @@
                     <select name="province" id="province" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
                         <option value="">Seleccione una provincia</option>
                         {% for code, name in provincias %}
-                        <option value="{{ name }}" {% if evaluation.province == name %}selected{% elif not evaluation.province and employee.province == name %}selected{% endif %}>{{ name }}</option>
+                        <option value="{{ name }}" {% if evaluation.province == name %}selected{% endif %}>{{ name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -50,7 +107,7 @@
                     <select name="city" id="city" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
                         <option value="">Seleccione una ciudad</option>
                         {% for ciudad in ciudades %}
-                        <option value="{{ ciudad }}" {% if evaluation.city == ciudad %}selected{% elif not evaluation.city and employee.city == ciudad %}selected{% endif %}>{{ ciudad }}</option>
+                        <option value="{{ ciudad }}" {% if evaluation.city == ciudad %}selected{% endif %}>{{ ciudad }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -60,14 +117,14 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-2">D. Área de trabajo</label>
                     <select name="work_area" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
                         <option value="">Seleccione un área</option>
-                        <option value="ADMINISTRATIVA" {% if evaluation.work_area == 'ADMINISTRATIVA' %}selected{% elif not evaluation.work_area and employee.area == 'Administrativa' %}selected{% endif %}>Administrativa</option>
-                        <option value="OPERATIVA" {% if evaluation.work_area == 'OPERATIVA' %}selected{% elif not evaluation.work_area and employee.area == 'Operativa' %}selected{% endif %}>Operativa</option>
-                        <option value="COMERCIAL" {% if evaluation.work_area == 'COMERCIAL' %}selected{% elif not evaluation.work_area and employee.area == 'Comercial' %}selected{% endif %}>Comercial</option>
-                        <option value="LOGISTICA" {% if evaluation.work_area == 'LOGISTICA' %}selected{% elif not evaluation.work_area and employee.area == 'Logística' %}selected{% endif %}>Logística</option>
-                        <option value="PRODUCCION" {% if evaluation.work_area == 'PRODUCCION' %}selected{% elif not evaluation.work_area and employee.area == 'Producción' %}selected{% endif %}>Producción</option>
-                        <option value="TRANSFORMACION" {% if evaluation.work_area == 'TRANSFORMACION' %}selected{% elif not evaluation.work_area and employee.area == 'Transformación' %}selected{% endif %}>Transformación</option>
-                        <option value="SOPORTE" {% if evaluation.work_area == 'SOPORTE' %}selected{% elif not evaluation.work_area and employee.area == 'Soporte' %}selected{% endif %}>Soporte</option>
-                        <option value="TECNOLOGIA_INNOVACION" {% if evaluation.work_area == 'TECNOLOGIA_INNOVACION' %}selected{% elif not evaluation.work_area and employee.area == 'Tecnología e Innovación' %}selected{% endif %}>Tecnología e Innovación</option>
+                        <option value="ADMINISTRATIVA" {% if evaluation.work_area == 'ADMINISTRATIVA' %}selected{% endif %}>Administrativa</option>
+                        <option value="OPERATIVA" {% if evaluation.work_area == 'OPERATIVA' %}selected{% endif %}>Operativa</option>
+                        <option value="COMERCIAL" {% if evaluation.work_area == 'COMERCIAL' %}selected{% endif %}>Comercial</option>
+                        <option value="LOGISTICA" {% if evaluation.work_area == 'LOGISTICA' %}selected{% endif %}>Logística</option>
+                        <option value="PRODUCCION" {% if evaluation.work_area == 'PRODUCCION' %}selected{% endif %}>Producción</option>
+                        <option value="TRANSFORMACION" {% if evaluation.work_area == 'TRANSFORMACION' %}selected{% endif %}>Transformación</option>
+                        <option value="SOPORTE" {% if evaluation.work_area == 'SOPORTE' %}selected{% endif %}>Soporte</option>
+                        <option value="TECNOLOGIA_INNOVACION" {% if evaluation.work_area == 'TECNOLOGIA_INNOVACION' %}selected{% endif %}>Tecnología e Innovación</option>
                     </select>
                 </div>
                 
@@ -92,10 +149,10 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-2">F. Antigüedad, años de experiencia dentro de la empresa</label>
                     <select name="experience_range" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
                         <option value="">Seleccione un rango</option>
-                        <option value="0-2" {% if evaluation.experience_range == '0-2' %}selected{% elif not evaluation.experience_range and employee.years_of_experience <= 2 %}selected{% endif %}>0-2 años</option>
-                        <option value="3-10" {% if evaluation.experience_range == '3-10' %}selected{% elif not evaluation.experience_range and 3 <= employee.years_of_experience <= 10 %}selected{% endif %}>3-10 años</option>
-                        <option value="11-20" {% if evaluation.experience_range == '11-20' %}selected{% elif not evaluation.experience_range and 11 <= employee.years_of_experience <= 20 %}selected{% endif %}>11-20 años</option>
-                        <option value="21+" {% if evaluation.experience_range == '21+' %}selected{% elif not evaluation.experience_range and employee.years_of_experience >= 21 %}selected{% endif %}>Igual o superior a 21 años</option>
+                        <option value="0-2" {% if evaluation.experience_range == '0-2' %}selected{% endif %}>0-2 años</option>
+                        <option value="3-10" {% if evaluation.experience_range == '3-10' %}selected{% endif %}>3-10 años</option>
+                        <option value="11-20" {% if evaluation.experience_range == '11-20' %}selected{% endif %}>11-20 años</option>
+                        <option value="21+" {% if evaluation.experience_range == '21+' %}selected{% endif %}>Igual o superior a 21 años</option>
                     </select>
                 </div>
                 
@@ -104,11 +161,11 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-2">G. Edad del trabajador o servidor</label>
                     <select name="age_range" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
                         <option value="">Seleccione un rango</option>
-                        <option value="16-24" {% if evaluation.age_range == '16-24' %}selected{% elif not evaluation.age_range and 16 <= employee.age <= 24 %}selected{% endif %}>16-24 años</option>
-                        <option value="25-34" {% if evaluation.age_range == '25-34' %}selected{% elif not evaluation.age_range and 25 <= employee.age <= 34 %}selected{% endif %}>25-34 años</option>
-                        <option value="35-43" {% if evaluation.age_range == '35-43' %}selected{% elif not evaluation.age_range and 35 <= employee.age <= 43 %}selected{% endif %}>35-43 años</option>
-                        <option value="44-52" {% if evaluation.age_range == '44-52' %}selected{% elif not evaluation.age_range and 44 <= employee.age <= 52 %}selected{% endif %}>44-52 años</option>
-                        <option value="53+" {% if evaluation.age_range == '53+' %}selected{% elif not evaluation.age_range and employee.age >= 53 %}selected{% endif %}>Igual o superior a 53 años</option>
+                        <option value="16-24" {% if evaluation.age_range == '16-24' %}selected{% endif %}>16-24 años</option>
+                        <option value="25-34" {% if evaluation.age_range == '25-34' %}selected{% endif %}>25-34 años</option>
+                        <option value="35-43" {% if evaluation.age_range == '35-43' %}selected{% endif %}>35-43 años</option>
+                        <option value="44-52" {% if evaluation.age_range == '44-52' %}selected{% endif %}>44-52 años</option>
+                        <option value="53+" {% if evaluation.age_range == '53+' %}selected{% endif %}>Igual o superior a 53 años</option>
                     </select>
                 </div>
                 
@@ -117,12 +174,12 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-2">H. Auto-identificación étnica</label>
                     <select name="ethnicity" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
                         <option value="">Seleccione una opción</option>
-                        <option value="INDIGENA" {% if evaluation.ethnicity == 'INDIGENA' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'INDIGENA' %}selected{% endif %}>Indígena</option>
-                        <option value="AFRO_ECUATORIANO" {% if evaluation.ethnicity == 'AFRO_ECUATORIANO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'AFROECUATORIANO' %}selected{% endif %}>Afro-ecuatoriano</option>
-                        <option value="MESTIZO" {% if evaluation.ethnicity == 'MESTIZO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'MESTIZO' %}selected{% endif %}>Mestizo/a</option>
-                        <option value="MONTUBIO" {% if evaluation.ethnicity == 'MONTUBIO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'MONTUBIO' %}selected{% endif %}>Montubio/a</option>
-                        <option value="BLANCO" {% if evaluation.ethnicity == 'BLANCO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'BLANCO' %}selected{% endif %}>Blanco/a</option>
-                        <option value="OTRO" {% if evaluation.ethnicity == 'OTRO' %}selected{% elif not evaluation.ethnicity and employee.ethnicity == 'OTRO' %}selected{% endif %}>Otro</option>
+                        <option value="INDIGENA" {% if evaluation.ethnicity == 'INDIGENA' %}selected{% endif %}>Indígena</option>
+                        <option value="AFRO_ECUATORIANO" {% if evaluation.ethnicity == 'AFRO_ECUATORIANO' %}selected{% endif %}>Afro-ecuatoriano</option>
+                        <option value="MESTIZO" {% if evaluation.ethnicity == 'MESTIZO' %}selected{% endif %}>Mestizo/a</option>
+                        <option value="MONTUBIO" {% if evaluation.ethnicity == 'MONTUBIO' %}selected{% endif %}>Montubio/a</option>
+                        <option value="BLANCO" {% if evaluation.ethnicity == 'BLANCO' %}selected{% endif %}>Blanco/a</option>
+                        <option value="OTRO" {% if evaluation.ethnicity == 'OTRO' %}selected{% endif %}>Otro</option>
                     </select>
                 </div>
                 
@@ -131,8 +188,8 @@
                     <label class="block text-sm font-semibold text-slate-700 mb-2">I. Género del trabajador o servidor</label>
                     <select name="gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent {% if is_superuser_view and not is_empty_preview %}bg-slate-100 cursor-not-allowed{% endif %}" {% if is_superuser_view and not is_empty_preview %}disabled{% else %}required{% endif %}>
                         <option value="">Seleccione un género</option>
-                        <option value="M" {% if evaluation.gender == 'M' %}selected{% elif not evaluation.gender and employee.gender == 'M' %}selected{% endif %}>Masculino</option>
-                        <option value="F" {% if evaluation.gender == 'F' %}selected{% elif not evaluation.gender and employee.gender == 'F' %}selected{% endif %}>Femenino</option>
+                        <option value="M" {% if evaluation.gender == 'M' %}selected{% endif %}>Masculino</option>
+                        <option value="F" {% if evaluation.gender == 'F' %}selected{% endif %}>Femenino</option>
                     </select>
                 </div>
                 
@@ -199,7 +256,7 @@
         
         <div class="space-y-6">
             {% for question in questions %}
-            <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition">
+            <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition question-container" data-question-id="{{ question.id }}" data-question-number="{{ question.number }}">
                 <div class="mb-4">
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex-1">
@@ -262,7 +319,8 @@
                     {% endif %}
                     {% else %}
                     <button type="submit" name="action" value="save_draft" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition">💾 Guardar Borrador</button>
-                    <button type="submit" name="action" value="submit" class="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition transform hover:scale-105" onclick="return confirm('¿Estás seguro de enviar la evaluación? No podrás modificarla después.')">✓ Enviar Evaluación</button>
+                    <button type="button" id="previewButton" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition">👁️ Ver Resultados Antes de Enviar</button>
+                    <button type="submit" name="action" value="submit" id="submitButton" class="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition transform hover:scale-105 hidden">✓ Enviar Evaluación Definitivamente</button>
                     {% endif %}
                 </div>
             </div>
@@ -290,6 +348,220 @@
     </div>
 </div>
 <script>
+// Modal de Confidencialidad
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('confidentialityModal');
+    const checkbox = document.getElementById('acceptConfidentiality');
+    const acceptButton = document.getElementById('acceptButton');
+    const form = document.getElementById('evaluationForm');
+    
+    // Si ya aceptó la confidencialidad, ocultar modal
+    {% if evaluation.confidentiality_accepted %}
+    modal.classList.add('hidden');
+    {% endif %}
+    
+    // Habilitar botón cuando se marca el checkbox
+    checkbox.addEventListener('change', function() {
+        acceptButton.disabled = !checkbox.checked;
+    });
+    
+    // Al aceptar, ocultar modal y habilitar formulario
+    acceptButton.addEventListener('click', function() {
+        if (checkbox.checked) {
+            modal.classList.add('hidden');
+            document.getElementById('confidentialityAccepted').value = 'true';
+            // Guardar en el servidor que aceptó
+            fetch('{% url "take_evaluation" evaluation.id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: 'confidentiality_accepted=true&action=accept_confidentiality'
+            }).catch(err => console.error('Error:', err));
+        }
+    });
+    
+    // Prevenir envío del formulario si no aceptó confidencialidad
+    form.addEventListener('submit', function(e) {
+        if (!checkbox.checked && !modal.classList.contains('hidden')) {
+            e.preventDefault();
+            alert('Debes aceptar la certificación de confidencialidad para continuar.');
+            modal.classList.remove('hidden');
+        }
+    });
+});
+
+// Vista previa de resultados antes de enviar
+document.addEventListener('DOMContentLoaded', function() {
+    const previewButton = document.getElementById('previewButton');
+    const submitButton = document.getElementById('submitButton');
+    
+    // Función para validar y resaltar preguntas faltantes
+    function validateAndHighlightMissing() {
+        const questionContainers = document.querySelectorAll('.question-container');
+        const missingQuestions = [];
+        
+        questionContainers.forEach(container => {
+            const questionId = container.dataset.questionId;
+            const questionNumber = container.dataset.questionNumber;
+            const radios = container.querySelectorAll(`input[name="question_${questionId}"]`);
+            const hasAnswer = Array.from(radios).some(r => r.checked);
+            
+            // Remover resaltado anterior
+            container.classList.remove('border-red-500', 'bg-red-50', 'ring-4', 'ring-red-200');
+            
+            if (!hasAnswer) {
+                missingQuestions.push(parseInt(questionNumber));
+                // Resaltar pregunta faltante
+                container.classList.add('border-red-500', 'bg-red-50', 'ring-4', 'ring-red-200');
+            }
+        });
+        
+        return missingQuestions;
+    }
+    
+    if (previewButton) {
+        previewButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Validar y resaltar preguntas faltantes
+            const missingQuestions = validateAndHighlightMissing();
+            
+            if (missingQuestions.length > 0) {
+                // Scroll a la primera pregunta faltante
+                const firstMissing = document.querySelector(`[data-question-number="${missingQuestions[0]}"]`);
+                if (firstMissing) {
+                    firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                const missingList = missingQuestions.length > 10 
+                    ? missingQuestions.slice(0, 10).join(', ') + ', ...'
+                    : missingQuestions.join(', ');
+                
+                alert(`Por favor, responde todas las preguntas antes de ver los resultados.\n\nPreguntas faltantes: ${missingList}\n\nLas preguntas faltantes están resaltadas en rojo.`);
+                return;
+            }
+            
+            // Guardar como borrador primero
+            const form = document.getElementById('evaluationForm');
+            if (!form) {
+                alert('Error: No se encontró el formulario');
+                previewButton.disabled = false;
+                previewButton.textContent = '👁️ Ver Resultados Antes de Enviar';
+                return;
+            }
+            
+            // Obtener la URL del formulario de forma segura
+            // Usar la URL actual de la página como acción del formulario
+            const formAction = window.location.pathname;
+            
+            const formData = new FormData(form);
+            formData.append('action', 'preview_results');
+            
+            // Mostrar loading
+            previewButton.disabled = true;
+            previewButton.textContent = 'Calculando resultados...';
+            
+            fetch(formAction, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'  // Indicar que es una petición AJAX
+                }
+            })
+            .then(response => {
+                // Verificar el tipo de contenido de la respuesta
+                const contentType = response.headers.get('content-type') || '';
+                
+                // Si es JSON, procesarlo
+                if (contentType.includes('application/json')) {
+                    return response.json().then(data => {
+                        if (data.success && data.redirect_url) {
+                            // Éxito: redirigir a la URL indicada
+                            window.location.href = String(data.redirect_url);
+                        } else if (data.success) {
+                            // Éxito sin URL específica, usar la URL por defecto
+                            window.location.href = '{% url "view_evaluation_results" evaluation.id %}';
+                        } else {
+                            // Error: mostrar mensaje específico
+                            throw new Error(data.error || 'Error desconocido');
+                        }
+                    });
+                }
+                
+                // Si la respuesta es OK pero no es JSON, puede ser una redirección HTML
+                if (response.ok) {
+                    // Intentar obtener la URL de redirección de forma segura
+                    const redirectUrl = '{% url "view_evaluation_results" evaluation.id %}';
+                    window.location.href = redirectUrl;
+                    return;
+                }
+                
+                // Si hay error HTTP, leer el texto para obtener más información
+                return response.text().then(text => {
+                    // Intentar extraer mensaje de error del HTML si es posible
+                    let errorMsg = `Error HTTP ${response.status}`;
+                    if (text && text.length > 0) {
+                        // Buscar mensajes de error comunes en el HTML
+                        const errorMatch = text.match(/error[^>]*>([^<]+)/i) || 
+                                         text.match(/Error[^>]*>([^<]+)/i);
+                        if (errorMatch && errorMatch[1]) {
+                            errorMsg = errorMatch[1].trim();
+                        } else {
+                            errorMsg = `Error HTTP ${response.status}: ${text.substring(0, 200)}`;
+                        }
+                    }
+                    throw new Error(errorMsg);
+                });
+            })
+            .catch(error => {
+                console.error('Error completo:', error);
+                // Mostrar el mensaje específico del error si está disponible
+                let errorMessage = 'Error al calcular resultados. Por favor, verifica que todas las preguntas estén respondidas y vuelve a intentar.';
+                
+                if (error.message) {
+                    errorMessage = String(error.message);
+                } else if (error.toString && error.toString() !== '[object Error]') {
+                    errorMessage = String(error.toString());
+                }
+                
+                alert(errorMessage);
+                previewButton.disabled = false;
+                previewButton.textContent = '👁️ Ver Resultados Antes de Enviar';
+            });
+        });
+    }
+    
+    // Validar al enviar el formulario
+    const form = document.getElementById('evaluationForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const action = document.activeElement?.value || new FormData(form).get('action');
+            
+            if (action === 'submit') {
+                const missingQuestions = validateAndHighlightMissing();
+                
+                if (missingQuestions.length > 0) {
+                    e.preventDefault();
+                    const firstMissing = document.querySelector(`[data-question-number="${missingQuestions[0]}"]`);
+                    if (firstMissing) {
+                        firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    
+                    const missingList = missingQuestions.length > 10 
+                        ? missingQuestions.slice(0, 10).join(', ') + ', ...'
+                        : missingQuestions.join(', ');
+                    
+                    alert(`Debes responder todas las preguntas antes de enviar.\n\nPreguntas faltantes: ${missingList}\n\nLas preguntas faltantes están resaltadas en rojo.`);
+                    return false;
+                }
+            }
+        });
+    }
+});
+
 const explanations = {
 {% for question in questions %}
 {{ question.number }}: {

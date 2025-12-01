@@ -223,13 +223,28 @@ class BulkImportForm(forms.Form):
         help_text='Seleccione un archivo Excel (.xlsx) con los datos a importar',
         widget=forms.FileInput(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent', 'accept': '.xlsx'})
     )
-    import_type = forms.ChoiceField(
-        choices=[
-            ('companies', 'Empresas'),
-            ('employees', 'Empleados'),
-            ('evaluations', 'Evaluaciones Históricas'),
-        ],
-        label='Tipo de Importación',
-        widget=forms.Select(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'})
-    )
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        is_superuser = kwargs.pop('is_superuser', False)
+        super().__init__(*args, **kwargs)
+        
+        # Definir opciones según el tipo de usuario
+        if is_superuser:
+            choices = [
+                ('companies', 'Empresas'),
+                ('employees', 'Empleados'),
+                ('evaluations', 'Evaluaciones Históricas'),
+            ]
+        else:
+            # Administradores de empresa solo pueden importar empleados
+            choices = [
+                ('employees', 'Empleados'),
+            ]
+        
+        self.fields['import_type'] = forms.ChoiceField(
+            choices=choices,
+            label='Tipo de Importación',
+            widget=forms.Select(attrs={'class': 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'})
+        )
 

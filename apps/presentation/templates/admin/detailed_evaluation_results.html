@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}Resultados Detallados por Evaluación{% endblock %}
+
+{% block content %}
+<div class="max-w-[99%] mx-auto space-y-4 p-4">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-800 to-blue-900 rounded-xl shadow-xl p-4 sm:p-6 border-2 border-blue-700">
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-4">
+            <!-- Información de Empresa -->
+            <div class="flex-shrink-0">
+                {% if company %}
+                <div class="bg-white rounded-lg px-4 py-2 shadow-md inline-flex items-center">
+                    <svg class="h-6 w-6 text-blue-800 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <div>
+                        <div class="text-xs text-slate-700 font-medium">EMPRESA</div>
+                        <div class="text-base font-bold text-slate-800">{{ company.name }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-white rounded-lg px-4 py-2 shadow-md inline-flex items-center">
+                    <svg class="h-6 w-6 text-blue-800 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <div class="text-xs text-slate-700 font-medium">VISTA</div>
+                        <div class="text-base font-bold text-slate-800">Resultados Detallados</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Filtros y Botones -->
+            <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3 flex-1 xl:justify-end">
+                <!-- Filtros: Año y Período -->
+                <form method="get" class="flex flex-row items-center gap-3 bg-white rounded-lg px-3 py-2 shadow-md" id="filterForm">
+                    {% if company %}
+                    <input type="hidden" name="company_id" value="{{ company.id }}">
+                    {% endif %}
+                    <!-- Year Filter -->
+                    <div class="flex items-center gap-2">
+                        <label for="year" class="text-sm font-medium text-slate-700">📅</label>
+                        <select name="year" id="year" onchange="this.form.submit()" class="text-sm border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md font-semibold text-slate-900 py-1.5 px-3 min-w-[80px]">
+                            <option value="2025" {% if year|stringformat:"i" == "2025" %}selected{% endif %}>2025</option>
+                            <option value="2024" {% if year|stringformat:"i" == "2024" %}selected{% endif %}>2024</option>
+                            <option value="2023" {% if year|stringformat:"i" == "2023" %}selected{% endif %}>2023</option>
+                        </select>
+                    </div>
+                    <!-- Period Filter -->
+                    {% if available_periods %}
+                    <div class="flex items-center gap-2">
+                        <label for="period_id" class="text-sm font-medium text-slate-700">📆</label>
+                        <select name="period_id" id="period_id" onchange="this.form.submit()" class="text-sm border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md font-semibold text-slate-900 py-1.5 px-3 min-w-[280px]">
+                            <option value="">Todos los períodos</option>
+                            {% for period in available_periods %}
+                            <option value="{{ period.id }}" {% if selected_period and selected_period.id == period.id %}selected{% endif %}>
+                                {{ period.name }} ({{ period.start_date|date:"d/m/Y" }} - {{ period.end_date|date:"d/m/Y" }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                </form>
+                
+                <!-- Botón Volver -->
+                <a href="{% if company %}{% url 'evaluation_results_by_company' company.id %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% else %}{% url 'evaluation_results' %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% endif %}" 
+                   class="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    <span>Volver</span>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Información del Período -->
+        {% if selected_period %}
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
+            <strong>Período seleccionado:</strong> {{ selected_period.name }} 
+            ({{ selected_period.start_date|date:"d/m/Y" }} - {{ selected_period.end_date|date:"d/m/Y" }})
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Título de la Tabla -->
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4">
+        <h2 class="text-xl font-bold text-slate-900 text-center mb-2">
+            TABULACIÓN 'CUESTIONARIO DE EVALUACIÓN DE RIESGO PSICOSOCIAL'
+        </h2>
+        <p class="text-sm text-slate-600 text-center">
+            Total de evaluaciones: <strong>{{ total_evaluations }}</strong>
+        </p>
+    </div>
+    
+    <!-- Tabla de Resultados -->
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-xs">
+                <thead class="bg-slate-50 sticky top-0 z-10">
+                    <tr>
+                        <!-- Columna N° CUESTIONARIO -->
+                        <th class="px-2 py-3 text-left text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-slate-100">
+                            N° CUESTIONARIO
+                        </th>
+                        
+                        <!-- Columnas por Dimensión (Puntaje y Nivel de Riesgo) -->
+                        {% for dimension in all_dimensions %}
+                        <th colspan="2" class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-blue-50">
+                            DIMENSIÓN {{ dimension.order }}. {{ dimension.name|upper|truncatewords:5 }}
+                        </th>
+                        {% endfor %}
+                        
+                        <!-- Resultado Global -->
+                        <th colspan="2" class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-green-50">
+                            RESULTADO GLOBAL
+                        </th>
+                        
+                        <!-- Datos Demográficos -->
+                        <th class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-yellow-50">
+                            A. FECHA
+                        </th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-yellow-50">
+                            B. PROVINCIA
+                        </th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-yellow-50">
+                            C. CIUDAD
+                        </th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-yellow-50">
+                            D. ÁREA
+                        </th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-yellow-50">
+                            E. EDUCACIÓN
+                        </th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase border-r border-slate-300 bg-yellow-50">
+                            F. EXPERIENCIA
+                        </th>
+                        <th class="px-2 py-2 text-center text-xs font-bold text-slate-700 uppercase bg-yellow-50">
+                            G. GÉNERO
+                        </th>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <th class="px-2 py-2 text-left text-xs font-semibold text-slate-600 border-r border-slate-300 bg-slate-100"></th>
+                        {% for dimension in all_dimensions %}
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-blue-50">Puntaje</th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-blue-50">Nivel</th>
+                        {% endfor %}
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-green-50">Puntaje</th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-green-50">Nivel</th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-yellow-50"></th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-yellow-50"></th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-yellow-50"></th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-yellow-50"></th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-yellow-50"></th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 border-r border-slate-300 bg-yellow-50"></th>
+                        <th class="px-2 py-2 text-center text-xs font-semibold text-slate-600 bg-yellow-50"></th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    {% for eval_data in evaluations_data %}
+                    <tr class="hover:bg-slate-50 {% cycle 'bg-white' 'bg-slate-50' %}">
+                        <!-- N° CUESTIONARIO -->
+                        <td class="px-2 py-2 text-sm font-medium text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                            Cuestionario {{ eval_data.number }}
+                        </td>
+                        
+                        <!-- Puntajes y Niveles por Dimensión -->
+                        {% for dim_score in eval_data.dimension_scores_list %}
+                        <td class="px-2 py-2 text-center text-xs font-semibold text-slate-900 border-r border-slate-200">
+                            {{ dim_score.score|default:"0" }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs font-bold border-r border-slate-200 whitespace-nowrap
+                            {% if dim_score.risk_level == 'BAJO' %}bg-green-100 text-green-800
+                            {% elif dim_score.risk_level == 'MEDIO' %}bg-yellow-100 text-yellow-800
+                            {% elif dim_score.risk_level == 'ALTO' %}bg-red-100 text-red-800
+                            {% else %}bg-gray-100 text-gray-600{% endif %}">
+                            {% if dim_score.risk_level and dim_score.risk_level != 'N/A' %}RIESGO {{ dim_score.risk_level }}{% else %}N/A{% endif %}
+                        </td>
+                        {% endfor %}
+                        
+                        <!-- Resultado Global -->
+                        <td class="px-2 py-2 text-center text-xs font-bold text-slate-900 border-r border-slate-200 bg-green-50">
+                            {{ eval_data.global_score }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs font-bold border-r border-slate-200 whitespace-nowrap bg-green-50
+                            {% if eval_data.global_risk_level == 'BAJO' %}bg-green-100 text-green-800
+                            {% elif eval_data.global_risk_level == 'MEDIO' %}bg-yellow-100 text-yellow-800
+                            {% elif eval_data.global_risk_level == 'ALTO' %}bg-red-100 text-red-800
+                            {% else %}bg-gray-100 text-gray-600{% endif %}">
+                            RIESGO {{ eval_data.global_risk_level }}
+                        </td>
+                        
+                        <!-- Datos Demográficos -->
+                        <td class="px-2 py-2 text-center text-xs text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {{ eval_data.date_completed|date:"d/m/Y"|default:"N/A" }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {{ eval_data.province|default:"N/A" }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {{ eval_data.city|default:"N/A" }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {{ eval_data.work_area|default:"N/A" }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {{ eval_data.education_level|default:"N/A" }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {{ eval_data.experience_range|default:"N/A" }}
+                        </td>
+                        <td class="px-2 py-2 text-center text-xs text-slate-700 whitespace-nowrap">
+                            {{ eval_data.gender|default:"N/A" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        {% with dim_count=all_dimensions|length %}
+                        {% with total_cols=dim_count|add:dim_count|add:2|add:7 %}
+                        <td colspan="{{ total_cols }}" class="px-4 py-8 text-center text-slate-500">
+                            No hay evaluaciones completadas para los filtros seleccionados.
+                        </td>
+                        {% endwith %}
+                        {% endwith %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Estilos adicionales para mejorar la visualización */
+    table {
+        border-collapse: collapse;
+    }
+    
+    th, td {
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* Scroll horizontal suave */
+    .overflow-x-auto {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+    
+    .overflow-x-auto::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .overflow-x-auto::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    .overflow-x-auto::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+

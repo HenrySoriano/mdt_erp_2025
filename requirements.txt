@@ -9,3 +9,4 @@ reportlab
 python-pptx
 matplotlib
 playwright
+PyMySQL>=1.1.0

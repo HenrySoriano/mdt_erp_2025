@@ -7,92 +7,129 @@
 <div class="max-w-7xl mx-auto space-y-4">
     <!-- Header con Nombre de Empresa Destacado -->
     <div class="bg-gradient-to-r from-blue-800 to-blue-900 rounded-xl shadow-xl p-4 sm:p-6 border-2 border-blue-700">
-        <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
-            <!-- Información de Empresa y Título -->
-            <div class="flex-1 min-w-0">
+        <!-- Primera Fila: Empresa, Filtros y Botones -->
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-4">
+            <!-- Información de Empresa -->
+            <div class="flex-shrink-0">
                 {% if company %}
-                <div class="bg-white rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 shadow-md inline-flex items-center mb-2 sm:mb-3">
-                    <svg class="h-6 w-6 sm:h-8 sm:w-8 text-blue-800 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-lg px-4 py-2 shadow-md inline-flex items-center">
+                    <svg class="h-6 w-6 text-blue-800 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                     </svg>
-                    <div class="min-w-0">
+                    <div>
                         <div class="text-xs text-slate-700 font-medium">EMPRESA</div>
-                        <div class="text-lg sm:text-xl font-bold text-slate-800 truncate">{{ company.name }}</div>
+                        <div class="text-base font-bold text-slate-800">{{ company.name }}</div>
                     </div>
                 </div>
                 {% else %}
-                <div class="bg-white rounded-lg px-3 py-1.5 sm:px-4 sm:py-2 shadow-md inline-flex items-center mb-2 sm:mb-3">
-                    <svg class="h-6 w-6 sm:h-8 sm:w-8 text-blue-800 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="bg-white rounded-lg px-4 py-2 shadow-md inline-flex items-center">
+                    <svg class="h-6 w-6 text-blue-800 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <div>
                         <div class="text-xs text-slate-700 font-medium">VISTA</div>
-                        <div class="text-lg sm:text-xl font-bold text-slate-800">Resultados Globales</div>
+                        <div class="text-base font-bold text-slate-800">Resultados Globales</div>
                     </div>
                 </div>
                 {% endif %}
-                <h1 class="text-2xl sm:text-3xl font-bold text-white">Evaluación de Riesgo Psicosocial</h1>
-                <p class="mt-1 text-xs sm:text-sm text-blue-100">Análisis integral de resultados - Año {{ year }}</p>
             </div>
             
-            <!-- Controles y Botones de Acción -->
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 lg:flex-shrink-0">
-                <!-- Year Filter - Compacto -->
-                <form method="get" class="flex items-center space-x-2 bg-white rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-md" id="yearForm">
-                    <label for="year" class="text-xs sm:text-sm font-medium text-slate-700 hidden sm:inline">📅</label>
-                    <select name="year" id="year" onchange="this.form.submit()" class="text-xs sm:text-sm border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md font-semibold text-slate-900 py-1 sm:py-1.5 px-2">
-                        <option value="2025" {% if year|stringformat:"i" == "2025" %}selected{% endif %}>2025</option>
-                        <option value="2024" {% if year|stringformat:"i" == "2024" %}selected{% endif %}>2024</option>
-                        <option value="2023" {% if year|stringformat:"i" == "2023" %}selected{% endif %}>2023</option>
-                    </select>
+            <!-- Filtros y Botones en una sola línea horizontal -->
+            <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3 flex-1 xl:justify-end">
+                <!-- Filtros: Año y Período -->
+                <form method="get" class="flex flex-row items-center gap-3 bg-white rounded-lg px-3 py-2 shadow-md" id="filterForm">
+                    {% if company_id %}
+                    <input type="hidden" name="company_id" value="{{ company_id }}">
+                    {% endif %}
+                    <!-- Year Filter -->
+                    <div class="flex items-center gap-2">
+                        <label for="year" class="text-sm font-medium text-slate-700">📅</label>
+                        <select name="year" id="year" onchange="this.form.submit()" class="text-sm border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md font-semibold text-slate-900 py-1.5 px-3 min-w-[80px]">
+                            <option value="2025" {% if year|stringformat:"i" == "2025" %}selected{% endif %}>2025</option>
+                            <option value="2024" {% if year|stringformat:"i" == "2024" %}selected{% endif %}>2024</option>
+                            <option value="2023" {% if year|stringformat:"i" == "2023" %}selected{% endif %}>2023</option>
+                        </select>
+                    </div>
+                    <!-- Period Filter - Solo si hay períodos disponibles -->
+                    {% if available_periods %}
+                    <div class="flex items-center gap-2">
+                        <label for="period_id" class="text-sm font-medium text-slate-700">📆</label>
+                        <select name="period_id" id="period_id" onchange="this.form.submit()" class="text-sm border-slate-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md font-semibold text-slate-900 py-1.5 px-3 min-w-[280px]">
+                            <option value="">Todos los períodos</option>
+                            {% for period in available_periods %}
+                            <option value="{{ period.id }}" {% if selected_period and selected_period.id == period.id %}selected{% endif %}>
+                                {{ period.name }} ({{ period.start_date|date:"d/m/Y" }} - {{ period.end_date|date:"d/m/Y" }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
                 </form>
                 
-                <!-- Botones de Acción - Grid Responsive -->
-                <div class="grid grid-cols-2 sm:grid-cols-2 lg:flex lg:flex-row gap-2">
+                <!-- Botones de Acción -->
+                <div class="flex flex-row items-center gap-2 flex-shrink-0">
                     <!-- Previsualizar PDF -->
-                    <a href="{% if company %}{% url 'pdf_preview_by_company' company.id %}?year={{ year }}{% else %}{% url 'pdf_preview' %}?year={{ year }}{% endif %}" 
+                    <a href="{% if company %}{% url 'pdf_preview_by_company' company.id %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% else %}{% url 'pdf_preview' %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% endif %}" 
                        target="_blank"
-                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
-                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       class="inline-flex items-center justify-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
-                        <span class="hidden sm:inline">Ver PDF</span>
-                        <span class="sm:hidden">PDF</span>
+                        <span>Ver PDF</span>
                     </a>
                     
                     <!-- Previsualizar PowerPoint -->
-                    <a href="{% if company %}{% url 'preview_pptx_report_by_company' company.id %}?year={{ year }}{% else %}{% url 'preview_pptx_report' %}?year={{ year }}{% endif %}" 
+                    <a href="{% if company %}{% url 'preview_pptx_report_by_company' company.id %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% else %}{% url 'preview_pptx_report' %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% endif %}" 
                        target="_blank"
-                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
-                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       class="inline-flex items-center justify-center px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
-                        <span class="hidden sm:inline">Ver PPT</span>
-                        <span class="sm:hidden">PPT</span>
+                        <span>Ver PPT</span>
                     </a>
                     
                     <!-- Descargar PowerPoint -->
-                    <a href="{% if company %}{% url 'pptx_progress_by_company' company.id %}?year={{ year }}{% else %}{% url 'pptx_progress' %}?year={{ year }}{% endif %}"
-                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
-                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <a href="{% if company %}{% url 'pptx_progress_by_company' company.id %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% else %}{% url 'pptx_progress' %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% endif %}"
+                       class="inline-flex items-center justify-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
-                        <span class="hidden sm:inline">Desc. PPT</span>
-                        <span class="sm:hidden">PPT</span>
+                        <span>Desc. PPT</span>
+                    </a>
+                    
+                    <!-- Vista Detallada -->
+                    <a href="{% if company %}{% url 'detailed_evaluation_results_by_company' company.id %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% else %}{% url 'detailed_evaluation_results' %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% endif %}" 
+                       class="inline-flex items-center justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>Vista Detallada</span>
                     </a>
                     
                     <!-- Excel Anónimo -->
-                    <a href="{% if company %}{% url 'download_anonymous_evaluations_excel_by_company' company.id %}?year={{ year }}{% else %}{% url 'download_anonymous_evaluations_excel' %}?year={{ year }}{% endif %}" 
-                       class="inline-flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
-                        <svg class="w-4 h-4 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <a href="{% if company %}{% url 'download_anonymous_evaluations_excel_by_company' company.id %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% else %}{% url 'download_anonymous_evaluations_excel' %}?year={{ year }}{% if selected_period %}&period_id={{ selected_period.id }}{% endif %}{% endif %}" 
+                       class="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg shadow-md transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <span class="hidden sm:inline">Excel</span>
-                        <span class="sm:hidden">XLS</span>
+                        <span>Excel</span>
                     </a>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Segunda Fila: Título y Descripción -->
+        <div class="border-t border-blue-700 pt-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2">Evaluación de Riesgo Psicosocial</h1>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+                <p class="text-sm text-blue-100">Análisis integral de resultados - Año {{ year }}</p>
+                {% if selected_period %}
+                <p class="text-sm text-blue-200 font-semibold">
+                    📆 Período: {{ selected_period.name }} ({{ selected_period.start_date|date:"d/m/Y" }} - {{ selected_period.end_date|date:"d/m/Y" }})
+                </p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -135,37 +172,104 @@
     <!-- ========== TAB: VISTA GENERAL ========== -->
     <div id="content-general" class="tab-content">
         <!-- Summary Stats -->
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="px-4 py-5 sm:p-6">
-                <dl class="grid grid-cols-1 gap-5 sm:grid-cols-3">
-                    <div class="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden sm:p-6">
-                        <dt class="text-sm font-medium text-slate-700 truncate">Total Evaluaciones</dt>
-                        <dd class="mt-1 text-3xl font-semibold text-slate-900">{{ total_evaluations }}</dd>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white text-sm font-semibold mb-2" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">Total Evaluaciones</p>
+                            <p class="text-5xl font-extrabold text-white mb-1" style="text-shadow: 0 2px 4px rgba(0,0,0,0.4);">{{ total_evaluations }}</p>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-full p-4 shadow-lg">
+                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
                     </div>
-                </dl>
+                </div>
+            </div>
+            
+            <!-- Tarjeta adicional para estadísticas globales -->
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white text-sm font-semibold mb-2" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">Riesgo Bajo</p>
+                            <p class="text-5xl font-extrabold text-white mb-1" style="text-shadow: 0 2px 4px rgba(0,0,0,0.4);">{{ global_risk_counts.bajo }}</p>
+                            <p class="text-white text-sm font-semibold mt-1" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ global_risk_percentages.bajo|floatformat:1 }}%</p>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-full p-4 shadow-lg">
+                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta de Riesgo Medio -->
+            <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white text-sm font-semibold mb-2" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">Riesgo Medio</p>
+                            <p class="text-5xl font-extrabold text-white mb-1" style="text-shadow: 0 2px 4px rgba(0,0,0,0.4);">{{ global_risk_counts.medio }}</p>
+                            <p class="text-white text-sm font-semibold mt-1" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ global_risk_percentages.medio|floatformat:1 }}%</p>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-full p-4 shadow-lg">
+                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+                <div class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white text-sm font-semibold mb-2" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">Riesgo Alto</p>
+                            <p class="text-5xl font-extrabold text-white mb-1" style="text-shadow: 0 2px 4px rgba(0,0,0,0.4);">{{ global_risk_counts.alto }}</p>
+                            <p class="text-white text-sm font-semibold mt-1" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ global_risk_percentages.alto|floatformat:1 }}%</p>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-full p-4 shadow-lg">
+                            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
         <!-- Resultado Global de la Evaluación -->
         {% if total_evaluations > 0 %}
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6 mt-6">
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3">
-                <div class="flex items-center justify-center mb-1">
-                    {% if company %}
-                    <span class="bg-white text-blue-600 px-4 py-1 rounded-full text-sm font-bold mr-3 shadow-md">
-                        🏢 {{ company.name }}
-                    </span>
-                    {% endif %}
-                    <span class="bg-blue-800 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                        Año {{ year }}
-                    </span>
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6 border border-slate-200">
+            <div class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 px-6 py-5">
+                <div class="flex flex-col sm:flex-row items-center justify-between mb-3">
+                    <div class="flex items-center space-x-3 mb-2 sm:mb-0">
+                        {% if company %}
+                        <span class="bg-white bg-opacity-20 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg border border-white border-opacity-30">
+                            🏢 {{ company.name }}
+                        </span>
+                        {% endif %}
+                        <span class="bg-white bg-opacity-20 backdrop-blur-sm text-white px-4 py-2 rounded-full text-xs font-semibold shadow-lg border border-white border-opacity-30">
+                            Año {{ year }}
+                        </span>
+                    </div>
+                    <div class="flex items-center">
+                        <svg class="h-6 w-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <h2 class="text-xl font-bold text-white">RESULTADO GLOBAL DE LA EVALUACIÓN</h2>
+                    </div>
                 </div>
-                <h2 class="text-xl font-bold text-white text-center">📊 RESULTADO GLOBAL DE LA EVALUACIÓN DE RIESGO PSICOSOCIAL</h2>
             </div>
             
             <!-- Tabla de Resultados Globales -->
-            <div class="p-4">
-                <div class="overflow-hidden border-2 border-slate-200 rounded-lg mb-4">
+            <div class="p-6 bg-gradient-to-br from-slate-50 to-white">
+                <div class="overflow-hidden border border-slate-300 rounded-xl mb-6 shadow-md bg-white">
                     <table class="min-w-full">
                         <thead>
                             <tr class="border-b-2 border-slate-300">
@@ -255,17 +359,124 @@
                     </div>
                 </div>
                 
-                <!-- Interpretación de Resultados -->
-                <div class="border-t-2 border-slate-300 pt-4">
-                    <h3 class="text-lg font-bold text-slate-900 mb-3 text-center">📋 INTERPRETACIÓN DE RESULTADOS</h3>
+                <!-- Tabla de Rangos de Puntuaciones -->
+                <div class="border-t border-slate-200 pt-6 mt-6 mb-6">
+                    <h3 class="text-lg font-bold text-slate-900 mb-4 text-center flex items-center justify-center">
+                        <svg class="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        RANGOS DE PUNTUACIONES PARA CLASIFICACIÓN DE RIESGO
+                    </h3>
                     
-                    <div class="space-y-2">
+                    <!-- Tabla de Rangos Globales -->
+                    <div class="bg-white rounded-xl shadow-md border border-slate-200 mb-4 overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm">📊 Evaluación General (58 Preguntas)</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Nivel de Riesgo</th>
+                                        <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase">Rango de Puntuación</th>
+                                        <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase">Descripción</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    <tr class="hover:bg-green-50">
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">RIESGO BAJO</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-sm font-bold text-slate-900">{{ global_ranges.BAJO.min }} - {{ global_ranges.BAJO.max }} puntos</td>
+                                        <td class="px-4 py-3 text-center text-xs text-slate-600">Potencial mínimo de impacto</td>
+                                    </tr>
+                                    <tr class="hover:bg-yellow-50">
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">RIESGO MEDIO</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-sm font-bold text-slate-900">{{ global_ranges.MEDIO.min }} - {{ global_ranges.MEDIO.max }} puntos</td>
+                                        <td class="px-4 py-3 text-center text-xs text-slate-600">Potencial moderado de impacto</td>
+                                    </tr>
+                                    <tr class="hover:bg-red-50">
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">RIESGO ALTO</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-sm font-bold text-slate-900">{{ global_ranges.ALTO.min }} - {{ global_ranges.ALTO.max }} puntos</td>
+                                        <td class="px-4 py-3 text-center text-xs text-slate-600">Potencial alto de impacto</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabla de Rangos por Dimensión -->
+                    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-slate-200">
+                            <h4 class="font-bold text-slate-800 text-sm">📋 Rangos por Dimensión</h4>
+                        </div>
+                        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <thead class="bg-slate-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Dimensión</th>
+                                        <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase bg-green-50">Riesgo Bajo</th>
+                                        <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase bg-yellow-50">Riesgo Medio</th>
+                                        <th class="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase bg-red-50">Riesgo Alto</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    {% for dim_info in dimensions_with_questions %}
+                                    {% with dim=dim_info.dimension %}
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="px-4 py-3">
+                                            <div class="text-sm font-medium text-slate-900 mb-1">
+                                                {{ dim.order }}. {{ dim.name }}
+                                            </div>
+                                            <div class="text-xs text-slate-600">
+                                                <span class="font-semibold text-blue-700">{{ dim_info.question_count }} pregunta{{ dim_info.question_count|pluralize }}:</span>
+                                                <span class="ml-1 font-mono">
+                                                    {{ dim_info.question_numbers|join:", " }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-xs font-semibold text-green-700 bg-green-50">
+                                            {{ dim.low_risk_min }} - {{ dim.low_risk_max }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-xs font-semibold text-yellow-700 bg-yellow-50">
+                                            {{ dim.medium_risk_min }} - {{ dim.medium_risk_max }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-xs font-semibold text-red-700 bg-red-50">
+                                            {{ dim.high_risk_min }} - {{ dim.high_risk_max }}
+                                        </td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Interpretación de Resultados -->
+                <div class="border-t border-slate-200 pt-6 mt-6">
+                    <h3 class="text-lg font-bold text-slate-900 mb-4 text-center flex items-center justify-center">
+                        <svg class="h-5 w-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        INTERPRETACIÓN DE RESULTADOS
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <!-- Riesgo Bajo -->
-                        <div class="border-l-4 border-green-500 bg-green-50 p-3 rounded-r-lg">
-                            <h4 class="font-bold text-green-700 mb-1 flex items-center text-sm">
-                                <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                                RIESGO BAJO
-                            </h4>
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                            <div class="flex items-center mb-3">
+                                <div class="bg-green-500 rounded-full p-2 mr-3">
+                                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-green-800 text-sm">RIESGO BAJO</h4>
+                            </div>
                             <p class="text-slate-700 text-xs leading-relaxed">
                                 El riesgo tiene un <strong>potencial mínimo de impacto</strong> sobre la seguridad y salud, no genera efectos nocivos 
                                 a corto plazo. Los efectos pueden ser prevenidos mediante el monitoreo periódico. Las acciones se orientan a 
@@ -274,11 +485,15 @@
                         </div>
                         
                         <!-- Riesgo Medio -->
-                        <div class="border-l-4 border-yellow-500 bg-yellow-50 p-3 rounded-r-lg">
-                            <h4 class="font-bold text-yellow-700 mb-1 flex items-center text-sm">
-                                <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
-                                RIESGO MEDIO
-                            </h4>
+                        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300 p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                            <div class="flex items-center mb-3">
+                                <div class="bg-yellow-500 rounded-full p-2 mr-3">
+                                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-yellow-800 text-sm">RIESGO MEDIO</h4>
+                            </div>
                             <p class="text-slate-700 text-xs leading-relaxed">
                                 El riesgo tiene un <strong>potencial moderado de impacto</strong> sobre la seguridad y salud que puede comprometer 
                                 las mismas en el mediano plazo, causando efectos nocivos para la salud, integridad física y enfermedades laborales. 
@@ -288,11 +503,15 @@
                         </div>
                         
                         <!-- Riesgo Alto -->
-                        <div class="border-l-4 border-red-500 bg-red-50 p-3 rounded-r-lg">
-                            <h4 class="font-bold text-red-700 mb-1 flex items-center text-sm">
-                                <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                                RIESGO ALTO
-                            </h4>
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+                            <div class="flex items-center mb-3">
+                                <div class="bg-red-500 rounded-full p-2 mr-3">
+                                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-red-800 text-sm">RIESGO ALTO</h4>
+                            </div>
                             <p class="text-slate-700 text-xs leading-relaxed">
                                 El riesgo tiene un <strong>potencial alto de impacto</strong> sobre la seguridad y salud de las personas, con niveles 
                                 de peligro <strong>intolerables</strong> que pueden generar efectos nocivos inmediatos sobre la salud e integridad física. 
@@ -307,10 +526,19 @@
         {% endif %}
 
         <!-- Gráfico de Barras Apiladas -->
-        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div class="mb-4">
-            <h2 class="text-xl font-bold text-gray-800">Evaluación de riesgo psicosocial por dimensión</h2>
-            <p class="text-sm text-gray-600 mt-1">Distribución porcentual de niveles de riesgo por dimensión</p>
+        <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-slate-200">
+        <div class="mb-6 pb-4 border-b border-slate-200">
+            <div class="flex items-center mb-2">
+                <div class="bg-blue-100 rounded-lg p-2 mr-3">
+                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Evaluación de Riesgo Psicosocial por Dimensión</h2>
+                    <p class="text-sm text-slate-600 mt-1">Distribución porcentual de niveles de riesgo por dimensión</p>
+                </div>
+            </div>
         </div>
         <div class="relative" style="height: 600px;">
             <canvas id="adminDimensionsChart"></canvas>
@@ -332,10 +560,19 @@
     </div>
 
     <!-- Tabla de Resultados por Dimensión -->
-    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div class="px-4 py-5 sm:px-6">
-            <h3 class="text-lg leading-6 font-medium text-slate-900">Resultados por Dimensión</h3>
-            <p class="mt-1 max-w-2xl text-sm text-slate-700">Distribución de niveles de riesgo por dimensión evaluada.</p>
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 mb-6">
+        <div class="bg-gradient-to-r from-slate-50 to-white px-6 py-5 border-b border-slate-200">
+            <div class="flex items-center">
+                <div class="bg-blue-100 rounded-lg p-2 mr-3">
+                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Resultados por Dimensión</h3>
+                    <p class="mt-1 text-sm text-slate-600">Distribución de niveles de riesgo por dimensión evaluada</p>
+                </div>
+            </div>
         </div>
         <div class="border-t border-slate-200 overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -413,56 +650,61 @@
     </div>
     
     <!-- Recomendaciones Estratégicas para la Gestión Empresarial -->
-    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 mb-6 border-l-4 border-indigo-600 mt-8">
-        <div class="flex items-start mb-6">
-            <div class="flex-shrink-0">
-                <svg class="h-10 w-10 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl shadow-xl p-8 mb-6 border border-indigo-200 mt-8">
+        <div class="flex items-start mb-6 pb-6 border-b border-indigo-200">
+            <div class="flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 shadow-lg">
+                <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
             </div>
             <div class="ml-4 flex-1">
-                <h3 class="text-2xl font-bold text-slate-900 mb-2">📋 Recomendaciones Estratégicas para la Gestión Empresarial</h3>
-                <p class="text-sm text-indigo-700 font-medium mb-1">Nivel de Riesgo General: 
-                    <span class="px-3 py-1 rounded-full text-white font-bold
-                        {% if overall_risk == 'ALTO' %}bg-red-600
-                        {% elif overall_risk == 'MEDIO' %}bg-yellow-600
-                        {% else %}bg-green-600{% endif %}">
+                <h3 class="text-2xl font-bold text-slate-900 mb-3">Recomendaciones Estratégicas para la Gestión Empresarial</h3>
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-sm text-slate-600 font-medium">Nivel de Riesgo General:</span>
+                    <span class="px-4 py-2 rounded-full text-white font-bold shadow-md
+                        {% if overall_risk == 'ALTO' %}bg-gradient-to-r from-red-500 to-red-600
+                        {% elif overall_risk == 'MEDIO' %}bg-gradient-to-r from-yellow-500 to-yellow-600
+                        {% else %}bg-gradient-to-r from-green-500 to-green-600{% endif %}">
                         {{ overall_risk }}
                     </span>
-                </p>
-                <p class="text-sm text-gray-600">Basado en el análisis de {{ total_evaluations }} evaluaciones completadas en {{ year }}</p>
+                    <span class="text-sm text-slate-500">• {{ total_evaluations }} evaluaciones en {{ year }}</span>
+                </div>
             </div>
         </div>
         
-        <div class="space-y-2">
+        <div class="space-y-3">
             {% for rec in general_recommendations %}
-            <div class="flex items-start bg-white rounded-lg p-3 shadow-sm border-l-2 border-indigo-400">
-                <span class="flex-shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full bg-indigo-600 text-white text-xs font-bold mr-2 mt-0.5">
+            <div class="flex items-start bg-white rounded-xl p-4 shadow-md border-l-4 border-indigo-500 hover:shadow-lg transition-shadow">
+                <span class="flex-shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white text-sm font-bold mr-3 shadow-md">
                     {{ forloop.counter }}
                 </span>
-                <p class="text-slate-700 text-sm leading-snug">{{ rec|safe }}</p>
+                <p class="text-slate-700 text-sm leading-relaxed pt-1">{{ rec|safe }}</p>
             </div>
             {% endfor %}
         </div>
     </div>
     
     <!-- Plan de Acción por Dimensión -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div class="mb-6">
-            <h3 class="text-2xl font-bold text-slate-900 mb-2 flex items-center">
-                <svg class="h-7 w-7 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                </svg>
-                Plan de Acción por Dimensión
-            </h3>
-            <p class="text-gray-600">Haga clic en cada dimensión para ver las recomendaciones específicas según el nivel de riesgo</p>
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-slate-200">
+        <div class="mb-6 pb-4 border-b border-slate-200">
+            <div class="flex items-center mb-2">
+                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-3 mr-3 shadow-lg">
+                    <svg class="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-slate-900">Plan de Acción por Dimensión</h3>
+                    <p class="text-slate-600 mt-1">Haga clic en cada dimensión para ver las recomendaciones específicas según el nivel de riesgo</p>
+                </div>
+            </div>
         </div>
         
         <div class="space-y-3">
             {% for dim_data in dimension_stats_list %}
             {% with stats=dim_data.stats %}
-            <details class="border border-slate-300 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                <summary class="cursor-pointer bg-gray-50 hover:bg-gray-100 p-4 flex items-center justify-between font-medium">
+            <details class="border border-slate-300 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 bg-white">
+                <summary class="cursor-pointer bg-gradient-to-r from-slate-50 to-white hover:from-blue-50 hover:to-indigo-50 p-5 flex items-center justify-between font-medium transition-colors">
                     <div class="flex items-center flex-1">
                         <span class="font-semibold text-slate-900 flex-1">{{ dim_data.name }}</span>
                         <div class="ml-4 flex items-center space-x-2 text-xs">

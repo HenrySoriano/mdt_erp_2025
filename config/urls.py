@@ -45,6 +45,8 @@ urlpatterns = [
     path('admin/employees/company/<int:company_id>/export/', admin_views.employee_export, name='employee_export_by_company'),
     path('admin/results/', admin_views.evaluation_results, name='evaluation_results'),
     path('admin/results/company/<int:company_id>/', admin_views.evaluation_results, name='evaluation_results_by_company'),
+    path('admin/results/detailed/', admin_views.detailed_evaluation_results, name='detailed_evaluation_results'),
+    path('admin/results/company/<int:company_id>/detailed/', admin_views.detailed_evaluation_results, name='detailed_evaluation_results_by_company'),
     path('admin/results/pdf/', admin_views.download_admin_results_pdf, name='download_admin_results_pdf'),
     path('admin/results/company/<int:company_id>/pdf/', admin_views.download_admin_results_pdf, name='download_admin_results_pdf_by_company'),
     
@@ -74,10 +76,11 @@ urlpatterns = [
     # Employee URLs
     path('employee/dashboard/', employee_views.employee_dashboard, name='employee_dashboard'),
     path('employee/evaluation/start/', employee_views.start_evaluation, name='start_evaluation'),
-    path('employee/evaluation/<int:evaluation_id>/', employee_views.take_evaluation, name='take_evaluation'),
-    path('employee/evaluation/<int:evaluation_id>/results/', employee_views.view_evaluation_results, name='view_evaluation_results'),
-    path('employee/evaluation/<int:evaluation_id>/results/pdf/', employee_views.download_evaluation_pdf, name='download_evaluation_pdf'),
-    path('employee/compare/', employee_views.compare_evaluations, name='compare_evaluations'),
+            path('employee/evaluation/<int:evaluation_id>/', employee_views.take_evaluation, name='take_evaluation'),
+            path('employee/evaluation/<int:evaluation_id>/results/', employee_views.view_evaluation_results, name='view_evaluation_results'),
+            path('employee/evaluation/<int:evaluation_id>/results/submit/', employee_views.submit_evaluation_from_results, name='submit_evaluation_from_results'),
+            path('employee/evaluation/<int:evaluation_id>/results/pdf/', employee_views.download_evaluation_pdf, name='download_evaluation_pdf'),
+            path('employee/compare/', employee_views.compare_evaluations, name='compare_evaluations'),
     
     # Django Browser Reload
     path("__reload__/", include("django_browser_reload.urls")),

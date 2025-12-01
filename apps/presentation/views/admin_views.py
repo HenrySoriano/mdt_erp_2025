@@ -8,7 +8,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.urls import reverse
 from django.core.exceptions import ValidationError
-from apps.infrastructure.models import CustomUser, Company, Employee, Evaluation, RiskResult, Question, Response, Dimension
+from apps.infrastructure.models import CustomUser, Company, Employee, Evaluation, RiskResult, Question, Response, Dimension, EvaluationPeriod
 from apps.presentation.forms import CompanyForm, EmployeeForm, BulkImportForm
 from apps.presentation.utils.ecuador_data import CIUDADES_POR_PROVINCIA
 from apps.presentation.utils.security import (
@@ -25,11 +25,160 @@ import csv
 import secrets
 import string
 import json
+import sys
+import io
+
+# Configurar stdout para UTF-8 en Windows
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 
 def user_is_admin(user):
     """Verifica si el usuario es admin o superuser"""
     return user.is_superuser or user.role in [CustomUser.Role.SUPERUSER, CustomUser.Role.COMPANY_ADMIN]
+
+
+def filter_evaluations_by_period(evaluations, company, year, period_id=None):
+    """
+    Filtra las evaluaciones por período de evaluación.
+    
+    Args:
+        evaluations: QuerySet de evaluaciones
+        company: Objeto Company o None
+        year: Año a filtrar
+        period_id: ID del período específico a filtrar (opcional)
+    
+    Returns:
+        Tuple: (evaluations_filtered, selected_period)
+    """
+    selected_period = None
+    
+    if company:
+        if period_id:
+            try:
+                selected_period = EvaluationPeriod.objects.get(
+                    id=period_id,
+                    company=company,
+                    year=year
+                )
+            except EvaluationPeriod.DoesNotExist:
+                selected_period = EvaluationPeriod.objects.filter(
+                    company=company,
+                    is_active=True,
+                    year=year
+                ).first()
+        else:
+            selected_period = EvaluationPeriod.objects.filter(
+                company=company,
+                is_active=True,
+                year=year
+            ).first()
+        
+        if selected_period:
+            # Filtrar por período y rango de fechas
+            # Usar evaluation_date si está disponible, sino usar date_completed
+            evaluations = evaluations.filter(
+                evaluation_period=selected_period
+            )
+            # Filtrar por rango de fechas usando evaluation_date o date_completed
+            from django.db.models import Q
+            evaluations = evaluations.filter(
+                Q(evaluation_date__gte=selected_period.start_date, evaluation_date__lte=selected_period.end_date) |
+                Q(evaluation_date__isnull=True, date_completed__gte=selected_period.start_date, date_completed__lte=selected_period.end_date)
+            )
+    
+    # SIEMPRE deduplicar: solo la evaluación más reciente por empleado
+    # Esto asegura que aunque un empleado tenga múltiples evaluaciones,
+    # solo se considere la última para el informe anónimo
+    from django.db.models import Max, Q
+    
+    # Obtener la fecha más reciente por empleado (usando date_completed o evaluation_date)
+    latest_evaluations = evaluations.values('employee_id').annotate(
+        latest_date_completed=Max('date_completed'),
+        latest_evaluation_date=Max('evaluation_date'),
+        latest_id=Max('id')
+    )
+    
+    evaluation_ids = []
+    for item in latest_evaluations:
+        employee_id = item['employee_id']
+        
+        # Determinar qué fecha usar para la comparación
+        # Priorizar evaluation_date si existe, sino usar date_completed
+        if item['latest_evaluation_date']:
+            # Usar evaluation_date como criterio principal
+            latest_eval = evaluations.filter(
+                employee_id=employee_id,
+                evaluation_date=item['latest_evaluation_date']
+            ).order_by('-id').first()
+        elif item['latest_date_completed']:
+            # Usar date_completed si no hay evaluation_date
+            latest_eval = evaluations.filter(
+                employee_id=employee_id,
+                date_completed=item['latest_date_completed']
+            ).order_by('-id').first()
+        else:
+            # Si no hay fechas, tomar la más reciente por ID
+            latest_eval = evaluations.filter(
+                employee_id=employee_id
+            ).order_by('-id').first()
+        
+        if latest_eval:
+            evaluation_ids.append(latest_eval.id)
+    
+    # Filtrar solo las evaluaciones más recientes por empleado
+    evaluations = evaluations.filter(id__in=evaluation_ids)
+    
+    return evaluations, selected_period
+
+
+def calculate_global_risk_percentages(global_risk_counts, total_evaluations_count):
+    """
+    Calcula los porcentajes globales de riesgo asegurando que sumen 100%.
+    
+    Según el procedimiento MDT:
+    - Contar cuántos empleados tuvieron riesgo bajo y dividir para el total
+    - Contar cuántos empleados tuvieron riesgo medio y dividir para el total
+    - Contar cuántos empleados tuvieron riesgo alto y dividir para el total
+    - Los porcentajes deben sumar 100%
+    
+    Args:
+        global_risk_counts: Dict con claves 'bajo', 'medio', 'alto' y sus conteos
+        total_evaluations_count: Total de evaluaciones (empleados)
+    
+    Returns:
+        Dict con porcentajes que suman exactamente 100%
+    """
+    if total_evaluations_count == 0:
+        return {'bajo': 0, 'medio': 0, 'alto': 0}
+    
+    # Calcular porcentajes
+    bajo_pct = (global_risk_counts['bajo'] / total_evaluations_count) * 100
+    medio_pct = (global_risk_counts['medio'] / total_evaluations_count) * 100
+    alto_pct = (global_risk_counts['alto'] / total_evaluations_count) * 100
+    
+    # Redondear a 2 decimales
+    bajo_pct = round(bajo_pct, 2)
+    medio_pct = round(medio_pct, 2)
+    alto_pct = round(alto_pct, 2)
+    
+    # Ajustar el último porcentaje para que la suma sea exactamente 100%
+    total_pct = bajo_pct + medio_pct + alto_pct
+    if abs(total_pct - 100.0) > 0.01:  # Tolerancia de 0.01%
+        diff = 100.0 - total_pct
+        # Ajustar el porcentaje más grande para compensar la diferencia
+        if alto_pct >= medio_pct and alto_pct >= bajo_pct:
+            alto_pct = round(alto_pct + diff, 2)
+        elif medio_pct >= bajo_pct:
+            medio_pct = round(medio_pct + diff, 2)
+        else:
+            bajo_pct = round(bajo_pct + diff, 2)
+    
+    return {
+        'bajo': bajo_pct,
+        'medio': medio_pct,
+        'alto': alto_pct,
+    }
 
 
 @login_required
@@ -292,12 +441,42 @@ def evaluation_results(request, company_id=None):
         year = datetime.now().year
     evaluations = evaluations.filter(year=year)
     
+    # Obtener período seleccionado del filtro
+    period_id = request.GET.get('period_id', None)
+    if period_id:
+        try:
+            period_id = int(period_id)
+        except (ValueError, TypeError):
+            period_id = None
+    
+    # Filtrar por período de evaluación
+    evaluations, selected_period = filter_evaluations_by_period(evaluations, company, year, period_id)
+    
+    # Obtener todos los períodos disponibles para la empresa y año
+    available_periods = []
+    if company:
+        available_periods = EvaluationPeriod.objects.filter(
+            company=company,
+            year=year
+        ).order_by('-start_date')
+    
     # Calcular estadísticas agregadas por dimensión
     risk_results = RiskResult.objects.filter(evaluation__in=evaluations).select_related('dimension')
     
-    # Obtener todas las dimensiones ordenadas
+    # Obtener todas las dimensiones ordenadas con sus preguntas
     from apps.infrastructure.models import Dimension
-    all_dimensions = Dimension.objects.all().order_by('order')
+    all_dimensions = Dimension.objects.prefetch_related('questions').all().order_by('order')
+    
+    # Preparar información de preguntas por dimensión para el template
+    dimensions_with_questions = []
+    for dim in all_dimensions:
+        questions = dim.questions.all().order_by('number')
+        question_numbers = [q.number for q in questions]
+        dimensions_with_questions.append({
+            'dimension': dim,
+            'question_count': questions.count(),
+            'question_numbers': question_numbers,
+        })
     
     # Contar total de evaluaciones completadas
     total_evaluations_count = evaluations.count()
@@ -638,11 +817,9 @@ def evaluation_results(request, company_id=None):
             global_risk_evaluations['alto'] += 1
     
     # Calcular porcentajes globales (basado en evaluaciones, no dimensiones)
-    global_risk_percentages = {
-        'bajo': round((global_risk_evaluations['bajo'] / total_evaluations_count * 100), 2) if total_evaluations_count > 0 else 0,
-        'medio': round((global_risk_evaluations['medio'] / total_evaluations_count * 100), 2) if total_evaluations_count > 0 else 0,
-        'alto': round((global_risk_evaluations['alto'] / total_evaluations_count * 100), 2) if total_evaluations_count > 0 else 0,
-    }
+    # Según el procedimiento: contar empleados por nivel y dividir para el total
+    # Los porcentajes deben sumar 100%
+    global_risk_percentages = calculate_global_risk_percentages(global_risk_evaluations, total_evaluations_count)
     
     global_risk_counts = global_risk_evaluations  # Alias para compatibilidad
     
@@ -690,14 +867,25 @@ def evaluation_results(request, company_id=None):
     # Obtener recomendaciones generales
     general_recommendations = employer_recs_service.get_general_recommendations_by_level(overall_risk)
     
+    # Rangos de puntuaciones para la tabla
+    global_ranges = {
+        'BAJO': {'min': 175, 'max': 232},
+        'MEDIO': {'min': 117, 'max': 174},
+        'ALTO': {'min': 58, 'max': 116},
+    }
+    
     context = {
         'company': company,
         'year': year,
+        'selected_period': selected_period,
+        'available_periods': available_periods,
         'total_evaluations': total_evaluations_count,
         'dimension_stats': dimension_stats,
         'dimension_stats_list': dimension_stats_list,
         'demographic_data': demographic_data,
         'all_dimensions': all_dimensions,
+        'dimensions_with_questions': dimensions_with_questions,  # Información de preguntas por dimensión
+        'global_ranges': global_ranges,  # Rangos de puntuación globales
         'employer_recommendations': employer_recommendations,  # Recomendaciones empresariales
         'general_recommendations': general_recommendations,  # Recomendaciones generales
         'overall_risk': overall_risk,  # Nivel de riesgo general
@@ -714,6 +902,136 @@ def evaluation_results(request, company_id=None):
     }
     
     return render(request, 'admin/evaluation_results.html', context)
+
+
+@login_required
+def detailed_evaluation_results(request, company_id=None):
+    """
+    Vista detallada de resultados por evaluación individual.
+    Muestra una tabla con cada evaluación, sus puntajes por dimensión y datos demográficos.
+    """
+    if not user_is_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta página')
+        return redirect('employee_dashboard')
+    
+    # Filtrar por empresa si se especifica
+    company = None
+    if company_id:
+        company = get_object_or_404(Company, id=company_id)
+        evaluations = Evaluation.objects.filter(
+            employee__company=company,
+            status=Evaluation.Status.COMPLETED
+        )
+    else:
+        if request.user.is_superuser or request.user.role == CustomUser.Role.SUPERUSER:
+            evaluations = Evaluation.objects.filter(status=Evaluation.Status.COMPLETED)
+        else:
+            companies = request.user.managed_companies.all()
+            if companies.count() == 1:
+                company = companies.first()
+            evaluations = Evaluation.objects.filter(
+                employee__company__in=companies,
+                status=Evaluation.Status.COMPLETED
+            )
+    
+    # Obtener año del filtro
+    try:
+        year_str = request.GET.get('year', str(datetime.now().year))
+        year = validate_year(year_str)
+        year_str = str(year)
+    except (ValueError, TypeError, ValidationError):
+        year = datetime.now().year
+        year_str = str(year)
+    try:
+        year = int(year_str)
+    except (ValueError, TypeError):
+        year = datetime.now().year
+    evaluations = evaluations.filter(year=year)
+    
+    # Obtener período seleccionado del filtro
+    period_id = request.GET.get('period_id', None)
+    if period_id:
+        try:
+            period_id = int(period_id)
+        except (ValueError, TypeError):
+            period_id = None
+    
+    # Filtrar por período de evaluación
+    evaluations, selected_period = filter_evaluations_by_period(evaluations, company, year, period_id)
+    
+    # Obtener todos los períodos disponibles para la empresa y año
+    available_periods = []
+    if company:
+        available_periods = EvaluationPeriod.objects.filter(
+            company=company,
+            year=year
+        ).order_by('-start_date')
+    
+    # Obtener todas las dimensiones ordenadas
+    all_dimensions = Dimension.objects.all().order_by('order')
+    
+    # Obtener el servicio de cálculo de riesgo
+    calculator = RiskCalculatorService()
+    
+    # Preparar datos para la tabla
+    evaluations_data = []
+    for idx, evaluation in enumerate(evaluations.select_related('employee', 'employee__company'), 1):
+        # Obtener resultados de riesgo por dimensión
+        risk_results = RiskResult.objects.filter(evaluation=evaluation).select_related('dimension')
+        dimension_scores = {}
+        for result in risk_results:
+            dimension_scores[result.dimension.name] = {
+                'score': result.score,
+                'risk_level': result.risk_level
+            }
+        
+        # Calcular puntaje global
+        global_score = calculator.calculate_global_score(evaluation)
+        global_risk_level = calculator.calculate_global_risk_level(global_score)
+        
+        # Obtener datos demográficos de la evaluación
+        evaluation_data = {
+            'number': idx,
+            'evaluation_id': evaluation.id,
+            'employee_name': evaluation.employee.full_name,
+            'date_completed': evaluation.date_completed,
+            'dimension_scores': {},
+            'global_score': global_score,
+            'global_risk_level': global_risk_level,
+            'province': evaluation.province or '',
+            'city': evaluation.city or '',
+            'work_area': evaluation.get_work_area_display() if evaluation.work_area else '',
+            'education_level': evaluation.get_education_level_display() if evaluation.education_level else '',
+            'experience_range': evaluation.get_experience_range_display() if evaluation.experience_range else '',
+            'age_range': evaluation.get_age_range_display() if evaluation.age_range else '',
+            'gender': evaluation.get_gender_display() if evaluation.gender else '',
+        }
+        
+        # Agregar puntajes por dimensión en el mismo orden que all_dimensions
+        dimension_scores_list = []
+        for dimension in all_dimensions:
+            if dimension.name in dimension_scores:
+                dimension_scores_list.append(dimension_scores[dimension.name])
+            else:
+                dimension_scores_list.append({
+                    'score': 0,
+                    'risk_level': 'N/A'
+                })
+        evaluation_data['dimension_scores_list'] = dimension_scores_list
+        
+        evaluations_data.append(evaluation_data)
+    
+    context = {
+        'company': company,
+        'year': year,
+        'selected_period': selected_period,
+        'available_periods': available_periods,
+        'all_dimensions': all_dimensions,
+        'evaluations_data': evaluations_data,
+        'total_evaluations': len(evaluations_data),
+    }
+    
+    return render(request, 'admin/detailed_evaluation_results.html', context)
 
 
 @login_required
@@ -2072,33 +2390,133 @@ def import_companies_from_excel(sheet):
     return count
 
 
-def import_employees_from_excel(sheet):
-    """Importa empleados desde Excel"""
+def import_employees_from_excel(sheet, allowed_companies=None):
+    """
+    Importa empleados desde Excel
+    
+    Args:
+        sheet: Hoja de Excel con los datos
+        allowed_companies: QuerySet de empresas permitidas (para admins de empresa).
+                          Si es None, permite todas las empresas (superusuarios).
+    """
     count = 0
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        if not row[0]:  # Si no hay nombre, saltar
+    errors = []
+    
+    # Debug: Imprimir primera fila para ver estructura
+    first_data_row = None
+    for row_num, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+        if row and any(row):  # Si la fila tiene algún valor
+            first_data_row = row
+            print(f"[DEBUG] Primera fila de datos (fila {row_num}): {row}")
+            print(f"[DEBUG] Número de columnas: {len(row) if row else 0}")
+            break
+    
+    for row_num, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+        if not row or not any(row):  # Si la fila está vacía, saltar
+            continue
+        
+        # Convertir None a string vacío para evitar errores
+        row = [str(cell).strip() if cell is not None else '' for cell in row]
+        
+        # Si el primer elemento está vacío después de convertir, saltar
+        if not row[0]:
             continue
         
         try:
-            # Buscar empresa por RUC o nombre
-            company_ruc = str(row[10]) if len(row) > 10 and row[10] else None
-            company_name = row[11] if len(row) > 11 and row[11] else None
-            
-            company = None
-            if company_ruc:
-                company = Company.objects.filter(ruc=company_ruc).first()
-            elif company_name:
-                company = Company.objects.filter(name=company_name).first()
-            
-            if not company:
+            # Validar campos mínimos requeridos
+            if not row[0] or not row[2]:  # Nombres y cédula son obligatorios
+                errors.append(f'Fila {row_num}: Falta nombre o cédula (Nombres: "{row[0]}", Cédula: "{row[2]}")')
+                print(f"[DEBUG] Fila {row_num} omitida: falta nombre o cédula")
                 continue
             
-            user_email = row[12] if len(row) > 12 and row[12] else f"{str(row[0]).lower().replace(' ', '.')}@empresa.com"
+            # Buscar empresa por RUC o nombre
+            # Plantilla: Columna 11 (índice 10) = Fecha Ingreso, Columna 12 (índice 11) = RUC Empresa, Columna 13 (índice 12) = Nombre Empresa
+            company_ruc = None
+            company_name = None
             
-            # Leer contraseña del Excel si está presente (columna 14, índice 13)
+            # Si solo hay una empresa permitida, usarla automáticamente
+            if allowed_companies is not None and allowed_companies.count() == 1:
+                company = allowed_companies.first()
+                print(f"[DEBUG] Fila {row_num}: Usando empresa única del admin - {company.name} (RUC: {company.ruc})")
+            else:
+                # RUC Empresa está en la columna 12 (índice 11)
+                if len(row) > 11:
+                    company_ruc_raw = row[11] if row[11] else None
+                    if company_ruc_raw and str(company_ruc_raw).strip() and str(company_ruc_raw).strip().lower() != 'none':
+                        company_ruc = str(company_ruc_raw).strip()
+                
+                # Nombre Empresa está en la columna 13 (índice 12)
+                if len(row) > 12:
+                    company_name_raw = row[12] if row[12] else None
+                    if company_name_raw and str(company_name_raw).strip() and str(company_name_raw).strip().lower() != 'none':
+                        company_name = str(company_name_raw).strip()
+                
+                print(f"[DEBUG] Fila {row_num}: Buscando empresa - RUC: '{company_ruc}', Nombre: '{company_name}'")
+                
+                company = None
+                if company_ruc:
+                    # Buscar por RUC exacto
+                    company_query = Company.objects.filter(ruc=company_ruc)
+                    if allowed_companies is not None:
+                        company_query = company_query.filter(id__in=allowed_companies.values_list('id', flat=True))
+                    company = company_query.first()
+                    if not company:
+                        # Intentar sin espacios ni guiones
+                        ruc_clean = company_ruc.replace(' ', '').replace('-', '')
+                        company_query = Company.objects.filter(ruc=ruc_clean)
+                        if allowed_companies is not None:
+                            company_query = company_query.filter(id__in=allowed_companies.values_list('id', flat=True))
+                        company = company_query.first()
+                        if company:
+                            print(f"[DEBUG] Empresa encontrada por RUC limpio: {ruc_clean}")
+                
+                if not company and company_name:
+                    # Buscar por nombre exacto
+                    company_query = Company.objects.filter(name=company_name)
+                    if allowed_companies is not None:
+                        company_query = company_query.filter(id__in=allowed_companies.values_list('id', flat=True))
+                    company = company_query.first()
+                    if not company:
+                        # Buscar por nombre que contenga el texto (case insensitive)
+                        company_query = Company.objects.filter(name__icontains=company_name)
+                        if allowed_companies is not None:
+                            company_query = company_query.filter(id__in=allowed_companies.values_list('id', flat=True))
+                        company = company_query.first()
+                        if company:
+                            print(f"[DEBUG] Empresa encontrada por nombre parcial: {company_name}")
+            
+            if not company:
+                error_msg = f'Fila {row_num}: No se encontró la empresa'
+                if company_ruc:
+                    error_msg += f' con RUC "{company_ruc}"'
+                if company_name:
+                    error_msg += f' con Nombre "{company_name}"'
+                if allowed_companies is not None:
+                    error_msg += f' (debe pertenecer a tu empresa)'
+                errors.append(error_msg)
+                print(f"[ERROR] {error_msg}")
+                # Debug: mostrar empresas disponibles
+                if allowed_companies is not None:
+                    print(f"[DEBUG] Empresas permitidas para este usuario:")
+                    for c in allowed_companies:
+                        print(f"  - RUC: '{c.ruc}', Nombre: '{c.name}'")
+                else:
+                    all_companies = Company.objects.all()[:5]
+                    if all_companies:
+                        print(f"[DEBUG] Empresas disponibles en el sistema (primeras 5):")
+                        for c in all_companies:
+                            print(f"  - RUC: '{c.ruc}', Nombre: '{c.name}'")
+                continue
+            
+            print(f"[DEBUG] Fila {row_num}: Empresa encontrada - {company.name} (RUC: {company.ruc})")
+            
+            # Email Empleado está en la columna 14 (índice 13)
+            user_email = row[13] if len(row) > 13 and row[13] else f"{str(row[0]).lower().replace(' ', '.')}@empresa.com"
+            
+            # Leer contraseña del Excel si está presente (columna 15, índice 14)
             password_from_excel = None
-            if len(row) > 13 and row[13]:
-                password_str = str(row[13]).strip()
+            if len(row) > 14 and row[14]:
+                password_str = str(row[14]).strip()
                 if password_str:  # Solo si hay contenido después de quitar espacios
                     password_from_excel = password_str
             
@@ -2155,15 +2573,24 @@ def import_employees_from_excel(sheet):
             from dateutil.relativedelta import relativedelta
             
             hire_date_value = date(2020, 1, 1)  # Default
-            if row[9]:
-                if isinstance(row[9], date):
-                    hire_date_value = row[9]
-                else:
+            if len(row) > 10 and row[10]:  # Columna 11 (índice 10): Fecha Ingreso o Años Antigüedad
+                hire_date_str = str(row[10]).strip()
+                if hire_date_str:
+                    # Intentar parsear como fecha primero
                     try:
-                        years_exp = int(row[9])
-                        hire_date_value = date.today() - relativedelta(years=years_exp)
-                    except (ValueError, TypeError):
-                        pass
+                        # Formato YYYY-MM-DD
+                        hire_date_value = datetime.strptime(hire_date_str, '%Y-%m-%d').date()
+                    except:
+                        try:
+                            # Formato DD/MM/YYYY
+                            hire_date_value = datetime.strptime(hire_date_str, '%d/%m/%Y').date()
+                        except:
+                            try:
+                                # Intentar como número (años de antigüedad)
+                                years_exp = int(float(hire_date_str))
+                                hire_date_value = date.today() - relativedelta(years=years_exp)
+                            except (ValueError, TypeError):
+                                pass
             
             # Leer work_area_erp (columna 7, índice 7 - nuevo campo)
             work_area_erp_value = 'ADMINISTRATIVA'  # Default
@@ -2174,31 +2601,45 @@ def import_employees_from_excel(sheet):
                 if work_area_erp_str in valid_areas:
                     work_area_erp_value = work_area_erp_str
             
+            # Validar education_level (columna 10, índice 9)
+            education_level_value = 'UNIVERSITARIO'  # Default
+            if len(row) > 9 and row[9]:
+                education_str = str(row[9]).upper().strip()
+                valid_education = ['PRIMARIA', 'SECUNDARIA', 'TECNICO', 'UNIVERSITARIO', 'POSTGRADO']
+                if education_str in valid_education:
+                    education_level_value = education_str
+            
             Employee.objects.get_or_create(
                 identification=str(row[2]),
                 defaults={
                     'user': employee_user,
                     'company': company,
-                    'first_name': row[0],
-                    'last_name': row[1],
+                    'first_name': str(row[0]).strip(),
+                    'last_name': str(row[1]).strip() if len(row) > 1 and row[1] else '',
                     'date_of_birth': date_of_birth,
-                    'gender': row[4] or 'M',
-                    'ethnicity': row[5] or 'MESTIZO',
-                    'area': row[6] or '',
+                    'gender': str(row[4]).upper().strip() if len(row) > 4 and row[4] else 'M',
+                    'ethnicity': str(row[5]).upper().strip() if len(row) > 5 and row[5] else 'MESTIZO',
+                    'area': str(row[6]).strip() if len(row) > 6 and row[6] else '',
                     'work_area_erp': work_area_erp_value,
-                    'position': row[8] or '',  # Ahora position está en columna 8
-                    'education_level': row[9] or 'UNIVERSITARIO',  # education_level en columna 9
+                    'position': str(row[8]).strip() if len(row) > 8 and row[8] else '',
+                    'education_level': education_level_value,
                     'hire_date': hire_date_value,
-                    'province': company.province,
-                    'city': company.city
+                    'province': company.province or '',
+                    'city': company.city or ''
                 }
             )
             count += 1
         except Exception as e:
-            print(f"Error importando empleado: {e}")
+            errors.append(f'Fila {row_num}: {str(e)}')
+            print(f"[ERROR] Error importando empleado en fila {row_num}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
     
-    return count
+    if errors:
+        print(f"[WARN] Errores durante importación de empleados: {errors[:10]}")  # Mostrar solo los primeros 10
+    
+    return count, errors
 
 
 def import_evaluations_from_excel(sheet):
@@ -2381,38 +2822,133 @@ def download_import_template(request):
 @login_required
 def bulk_import(request):
     """Importación masiva desde Excel"""
-    if not (request.user.is_superuser or request.user.role == CustomUser.Role.SUPERUSER):
-        messages.error(request, 'Solo los superusuarios pueden importar datos masivos')
+    if not user_is_admin(request.user):
+        messages.error(request, 'No tienes permisos para importar datos masivos')
         return redirect('admin_dashboard')
     
+    # Determinar si es superusuario o admin de empresa
+    is_superuser = request.user.is_superuser or request.user.role == CustomUser.Role.SUPERUSER
+    is_company_admin = request.user.role == CustomUser.Role.COMPANY_ADMIN
+    
+    # Obtener empresas del admin si es company admin
+    user_companies = None
+    if is_company_admin:
+        user_companies = request.user.managed_companies.all()
+        if not user_companies.exists():
+            messages.error(request, 'No tienes empresas asignadas para importar empleados')
+            return redirect('admin_dashboard')
+    
     if request.method == 'POST':
-        form = BulkImportForm(request.POST, request.FILES)
+        form = BulkImportForm(request.POST, request.FILES, user=request.user, is_superuser=is_superuser)
         if form.is_valid():
-            excel_file = request.FILES['excel_file']
+            excel_file = request.FILES.get('excel_file')
             import_type = form.cleaned_data['import_type']
             
+            # Validar permisos según tipo de importación
+            if import_type == 'companies' and not is_superuser:
+                messages.error(request, 'Solo los superusuarios pueden importar empresas')
+                return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+            
+            if import_type == 'evaluations' and not is_superuser:
+                messages.error(request, 'Solo los superusuarios pueden importar evaluaciones históricas')
+                return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+            
+            # Validar que se haya subido un archivo
+            if not excel_file:
+                messages.error(request, 'No se ha seleccionado ningún archivo')
+                return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+            
+            # Validar extensión del archivo
+            if not excel_file.name.endswith(('.xlsx', '.xls')):
+                messages.error(request, 'El archivo debe ser un archivo Excel (.xlsx o .xls)')
+                return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+            
             try:
-                workbook = openpyxl.load_workbook(excel_file)
+                # Validar tamaño del archivo (máximo 10MB)
+                if excel_file.size > 10 * 1024 * 1024:
+                    messages.error(request, 'El archivo es demasiado grande. El tamaño máximo es 10MB')
+                    return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+                
+                workbook = openpyxl.load_workbook(excel_file, data_only=True)
                 sheet = workbook.active
                 
+                # Validar que la hoja tenga contenido
+                if sheet.max_row < 2:
+                    messages.error(request, 'El archivo Excel está vacío o no tiene datos. Debe tener al menos una fila de datos además de los encabezados.')
+                    return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+                
+                errors = []
+                count = 0
+                
                 with transaction.atomic():
-                    if import_type == 'companies':
-                        count = import_companies_from_excel(sheet)
-                        messages.success(request, f'{count} empresas importadas exitosamente')
-                    elif import_type == 'employees':
-                        count = import_employees_from_excel(sheet)
-                        messages.success(request, f'{count} empleados importados exitosamente')
-                    elif import_type == 'evaluations':
-                        count = import_evaluations_from_excel(sheet)
-                        messages.success(request, f'{count} evaluaciones importadas exitosamente')
+                    try:
+                        if import_type == 'companies':
+                            if not is_superuser:
+                                messages.error(request, 'No tienes permisos para importar empresas')
+                                return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+                            count = import_companies_from_excel(sheet)
+                            if count == 0:
+                                messages.warning(request, 'No se importaron empresas. Verifica que el archivo tenga datos válidos en las filas correctas.')
+                            else:
+                                messages.success(request, f'{count} empresas importadas exitosamente')
+                        elif import_type == 'employees':
+                            # Para admins de empresa, pasar las empresas permitidas
+                            allowed_companies = user_companies if is_company_admin else None
+                            count, import_errors = import_employees_from_excel(sheet, allowed_companies=allowed_companies)
+                            if count == 0:
+                                error_message = 'No se importaron empleados. Verifica que: 1) El archivo tenga datos válidos, 2) Las empresas existan en el sistema, 3) Las cédulas sean únicas.'
+                                if is_company_admin:
+                                    error_message += f' 4) Los empleados pertenezcan a tu empresa ({", ".join([c.name for c in user_companies])})'
+                                if import_errors:
+                                    # Agregar primeros errores al mensaje
+                                    error_details = '\\n'.join(import_errors[:5])  # Primeros 5 errores
+                                    if len(import_errors) > 5:
+                                        error_details += f'\\n... y {len(import_errors) - 5} errores más'
+                                    error_message += f'\\n\\nErrores encontrados:\\n{error_details}'
+                                messages.warning(request, error_message)
+                            else:
+                                success_msg = f'{count} empleados importados exitosamente'
+                                if import_errors:
+                                    success_msg += f' (con {len(import_errors)} advertencias)'
+                                messages.success(request, success_msg)
+                        elif import_type == 'evaluations':
+                            if not is_superuser:
+                                messages.error(request, 'No tienes permisos para importar evaluaciones históricas')
+                                return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+                            count = import_evaluations_from_excel(sheet)
+                            if count == 0:
+                                messages.warning(request, 'No se importaron evaluaciones. Verifica que: 1) El archivo tenga datos válidos, 2) Los empleados existan en el sistema.')
+                            else:
+                                messages.success(request, f'{count} evaluaciones importadas exitosamente')
+                        else:
+                            messages.error(request, f'Tipo de importación inválido: {import_type}')
+                            return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
+                    except Exception as e:
+                        import traceback
+                        error_detail = traceback.format_exc()
+                        print(f"[ERROR] Error durante importación: {e}")
+                        print(error_detail)
+                        messages.error(request, f'Error al procesar el archivo: {str(e)}. Verifica el formato del archivo y que los datos sean correctos.')
+                        return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
                 
                 return redirect('admin_dashboard')
+            except openpyxl.utils.exceptions.InvalidFileException:
+                messages.error(request, 'El archivo no es un archivo Excel válido. Por favor, verifica que el archivo no esté corrupto.')
             except Exception as e:
-                messages.error(request, f'Error al importar: {str(e)}')
+                import traceback
+                error_detail = traceback.format_exc()
+                print(f"[ERROR] Error al cargar archivo Excel: {e}")
+                print(error_detail)
+                messages.error(request, f'Error al importar: {str(e)}. Por favor, verifica que el archivo sea un Excel válido (.xlsx)')
+        else:
+            # Mostrar errores del formulario
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'Error en {form.fields[field].label}: {error}')
     else:
-        form = BulkImportForm()
+        form = BulkImportForm(user=request.user, is_superuser=is_superuser)
     
-    return render(request, 'admin/bulk_import.html', {'form': form})
+    return render(request, 'admin/bulk_import.html', {'form': form, 'is_superuser': is_superuser, 'is_company_admin': is_company_admin, 'user_companies': user_companies})
 
 
 @login_required
@@ -2735,209 +3271,362 @@ def download_anonymous_evaluations_excel(request, company_id=None):
 @login_required
 def preview_pptx_report(request, company_id=None):
     """Vista HTML optimizada para previsualización y captura de screenshots para PowerPoint"""
-    if not user_is_admin(request.user):
-        messages.error(request, 'No tienes permisos para acceder a esta página')
-        return redirect('employee_dashboard')
-    
-    # Reutilizar TODA la lógica de evaluation_results
-    # Filtrar por empresa
-    company = None
-    if company_id:
-        company = get_object_or_404(Company, id=company_id)
-        evaluations = Evaluation.objects.filter(
-            employee__company=company,
-            status=Evaluation.Status.COMPLETED
-        ).select_related('employee')
-    else:
-        if request.user.is_superuser or request.user.role == CustomUser.Role.SUPERUSER:
-            evaluations = Evaluation.objects.filter(status=Evaluation.Status.COMPLETED).select_related('employee')
-        else:
-            companies = request.user.managed_companies.all()
-            if companies.count() == 1:
-                company = companies.first()
+    try:
+        if not user_is_admin(request.user):
+            messages.error(request, 'No tienes permisos para acceder a esta página')
+            return redirect('employee_dashboard')
+        
+        # Reutilizar TODA la lógica de evaluation_results
+        # Filtrar por empresa
+        company = None
+        if company_id:
+            company = get_object_or_404(Company, id=company_id)
             evaluations = Evaluation.objects.filter(
-                employee__company__in=companies,
+                employee__company=company,
                 status=Evaluation.Status.COMPLETED
             ).select_related('employee')
-    
-    # Obtener año del filtro
-    # Validar año de forma segura
-    try:
-        year_str = request.GET.get('year', str(datetime.now().year))
-        year = validate_year(year_str)
-        year_str = str(year)
-    except (ValueError, TypeError, ValidationError):
-        year = datetime.now().year
-        year_str = str(year)
-    try:
-        year = int(year_str)
-    except (ValueError, TypeError):
-        year = datetime.now().year
-    evaluations = evaluations.filter(year=year)
-    
-    # Calcular todas las estadísticas (igual que evaluation_results)
-    risk_results = RiskResult.objects.filter(evaluation__in=evaluations).select_related('dimension')
-    all_dimensions = Dimension.objects.all().order_by('order')
-    total_evaluations_count = evaluations.count()
-    
-    # Calcular dimension_stats
-    dimension_stats = {}
-    dimension_stats_list = []
-    
-    for dim in all_dimensions:
-        bajo_count = risk_results.filter(dimension=dim, risk_level='BAJO').count()
-        medio_count = risk_results.filter(dimension=dim, risk_level='MEDIO').count()
-        alto_count = risk_results.filter(dimension=dim, risk_level='ALTO').count()
-        
-        bajo_percentage = round((bajo_count / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0
-        medio_percentage = round((medio_count / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0
-        alto_percentage = round((alto_count / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0
-        
-        dimension_stats[dim.name] = {
-            'bajo_count': bajo_count,
-            'medio_count': medio_count,
-            'alto_count': alto_count,
-            'bajo_percentage': bajo_percentage,
-            'medio_percentage': medio_percentage,
-            'alto_percentage': alto_percentage,
-        }
-        
-        dimension_stats_list.append({
-            'dimension_name': dim.name,
-            'bajo_count': bajo_count,
-            'medio_count': medio_count,
-            'alto_count': alto_count,
-            'bajo_percentage': bajo_percentage,
-            'medio_percentage': medio_percentage,
-            'alto_percentage': alto_percentage,
-        })
-    
-    # Calcular riesgo global (por puntuación total)
-    from apps.application.services.risk_calculator import RiskCalculatorService
-    calculator = RiskCalculatorService()
-    
-    global_score_counts = {'bajo': 0, 'medio': 0, 'alto': 0}
-    for evaluation in evaluations:
-        global_score = calculator.calculate_global_score(evaluation)
-        global_risk_level = calculator.calculate_global_risk_level(global_score)
-        if global_risk_level == 'BAJO':
-            global_score_counts['bajo'] += 1
-        elif global_risk_level == 'MEDIO':
-            global_score_counts['medio'] += 1
-        elif global_risk_level == 'ALTO':
-            global_score_counts['alto'] += 1
-    
-    global_score_percentages = {
-        'bajo': round((global_score_counts['bajo'] / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0,
-        'medio': round((global_score_counts['medio'] / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0,
-        'alto': round((global_score_counts['alto'] / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0,
-    }
-    
-    # Determinar riesgo general
-    if global_score_counts['alto'] > global_score_counts['medio'] and global_score_counts['alto'] > global_score_counts['bajo']:
-        overall_risk = 'ALTO'
-    elif global_score_counts['medio'] >= global_score_counts['bajo'] and global_score_counts['medio'] >= global_score_counts['alto']:
-        overall_risk = 'MEDIO'
-    else:
-        overall_risk = 'BAJO'
-    
-    # Recomendaciones
-    from apps.application.services.employer_recommendations_service import EmployerRecommendationsService
-    employer_recs_service = EmployerRecommendationsService()
-    general_recommendations = employer_recs_service.get_general_recommendations_by_level(overall_risk)
-    
-    # Calcular datos demográficos (MISMA LÓGICA que evaluation_results)
-    def calculate_demographic_stats_preview(field_name, display_method=None):
-        """Calcula estadísticas demográficas - IDÉNTICA a evaluation_results"""
-        # Obtener valores únicos con su conteo
-        field_values = evaluations.values(field_name).annotate(count=Count('id')).order_by(field_name)
-        
-        stats = []
-        for item in field_values:
-            value = item[field_name]
-            if not value:  # Saltar valores vacíos
-                continue
-            
-            # Filtrar evaluaciones por este valor
-            filtered_evals = evaluations.filter(**{field_name: value})
-            count = filtered_evals.count()
-            
-            # Obtener label legible
-            if display_method:
-                # Obtener una evaluación de ejemplo para usar get_FOO_display()
-                sample_eval = filtered_evals.first()
-                if sample_eval:
-                    label = getattr(sample_eval, display_method)()
-                else:
-                    label = value
+        else:
+            if request.user.is_superuser or request.user.role == CustomUser.Role.SUPERUSER:
+                evaluations = Evaluation.objects.filter(status=Evaluation.Status.COMPLETED).select_related('employee')
             else:
-                label = value
+                companies = request.user.managed_companies.all()
+                if companies.count() == 1:
+                    company = companies.first()
+                evaluations = Evaluation.objects.filter(
+                    employee__company__in=companies,
+                    status=Evaluation.Status.COMPLETED
+                ).select_related('employee')
+    
+        # Obtener año del filtro
+        # Validar año de forma segura
+        try:
+            year_str = request.GET.get('year', str(datetime.now().year))
+            year = validate_year(year_str)
+            year_str = str(year)
+        except (ValueError, TypeError, ValidationError):
+            year = datetime.now().year
+            year_str = str(year)
+        try:
+            year = int(year_str)
+        except (ValueError, TypeError):
+            year = datetime.now().year
+        evaluations = evaluations.filter(year=year)
+        
+        # Obtener período seleccionado del filtro
+        period_id = request.GET.get('period_id', None)
+        if period_id:
+            try:
+                period_id = int(period_id)
+            except (ValueError, TypeError):
+                period_id = None
+        
+        # Filtrar por período de evaluación (con deduplicación - solo última evaluación por empleado)
+        evaluations, selected_period = filter_evaluations_by_period(evaluations, company, year, period_id)
+    
+        # Obtener todos los períodos disponibles para la empresa y año
+        available_periods = []
+        if company:
+            available_periods = EvaluationPeriod.objects.filter(
+                company=company,
+                year=year
+            ).order_by('-start_date')
+        
+        # Calcular todas las estadísticas (igual que evaluation_results)
+        risk_results = RiskResult.objects.filter(evaluation__in=evaluations).select_related('dimension')
+        all_dimensions = Dimension.objects.all().order_by('order')
+        total_evaluations_count = evaluations.count()
+    
+        # Calcular dimension_stats
+        dimension_stats = {}
+        dimension_stats_list = []
+        
+        for dim in all_dimensions:
+            bajo_count = risk_results.filter(dimension=dim, risk_level='BAJO').count()
+            medio_count = risk_results.filter(dimension=dim, risk_level='MEDIO').count()
+            alto_count = risk_results.filter(dimension=dim, risk_level='ALTO').count()
             
-            # Calcular riesgo por dimensión para este grupo
-            group_risk_results = RiskResult.objects.filter(
-                evaluation__in=filtered_evals
-            ).select_related('dimension')
+            bajo_percentage = round((bajo_count / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0
+            medio_percentage = round((medio_count / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0
+            alto_percentage = round((alto_count / total_evaluations_count * 100), 1) if total_evaluations_count > 0 else 0
             
-            # Inicializar contadores por dimensión
-            dimension_risks = {}
-            for dim in all_dimensions:
-                dimension_risks[dim.name] = {
-                    'BAJO': 0,
-                    'MEDIO': 0,
-                    'ALTO': 0,
-                    'porcentaje_bajo': 0.0,
-                    'porcentaje_medio': 0.0,
-                    'porcentaje_alto': 0.0,
-                }
+            dimension_stats[dim.name] = {
+                'bajo_count': bajo_count,
+                'medio_count': medio_count,
+                'alto_count': alto_count,
+                'bajo_percentage': bajo_percentage,
+                'medio_percentage': medio_percentage,
+                'alto_percentage': alto_percentage,
+            }
             
-            # Contar resultados
-            for result in group_risk_results:
-                dim_name = result.dimension.name
-                if dim_name in dimension_risks:
-                    dimension_risks[dim_name][result.risk_level] += 1
-            
-            # Calcular porcentajes
-            if count > 0:
-                for dim_name, risks in dimension_risks.items():
-                    risks['porcentaje_bajo'] = round((risks['BAJO'] / count) * 100, 1)
-                    risks['porcentaje_medio'] = round((risks['MEDIO'] / count) * 100, 1)
-                    risks['porcentaje_alto'] = round((risks['ALTO'] / count) * 100, 1)
-            
-            stats.append({
-                'value': value,
-                'label': label,
-                'count': count,
-                'dimension_risks': dimension_risks
+            dimension_stats_list.append({
+                'dimension_name': dim.name,
+                'bajo_count': bajo_count,
+                'medio_count': medio_count,
+                'alto_count': alto_count,
+                'bajo_percentage': bajo_percentage,
+                'medio_percentage': medio_percentage,
+                'alto_percentage': alto_percentage,
             })
         
-        return stats
+        # Calcular riesgo global (por puntuación total)
+        from apps.application.services.risk_calculator import RiskCalculatorService
+        calculator = RiskCalculatorService()
+        
+        global_score_counts = {'bajo': 0, 'medio': 0, 'alto': 0}
+        for evaluation in evaluations:
+            global_score = calculator.calculate_global_score(evaluation)
+            global_risk_level = calculator.calculate_global_risk_level(global_score)
+            if global_risk_level == 'BAJO':
+                global_score_counts['bajo'] += 1
+            elif global_risk_level == 'MEDIO':
+                global_score_counts['medio'] += 1
+            elif global_risk_level == 'ALTO':
+                global_score_counts['alto'] += 1
+        
+        # Calcular porcentajes globales usando la función auxiliar (asegura que sumen 100%)
+        global_score_percentages = calculate_global_risk_percentages(global_score_counts, total_evaluations_count)
+        
+        # Determinar riesgo general
+        if global_score_counts['alto'] > global_score_counts['medio'] and global_score_counts['alto'] > global_score_counts['bajo']:
+            overall_risk = 'ALTO'
+        elif global_score_counts['medio'] >= global_score_counts['bajo'] and global_score_counts['medio'] >= global_score_counts['alto']:
+            overall_risk = 'MEDIO'
+        else:
+            overall_risk = 'BAJO'
+        
+        # Recomendaciones
+        from apps.application.services.employer_recommendations_service import EmployerRecommendationsService
+        employer_recs_service = EmployerRecommendationsService()
+        general_recommendations = employer_recs_service.get_general_recommendations_by_level(overall_risk)
+        
+        # Calcular datos demográficos (MISMA LÓGICA que evaluation_results)
+        def calculate_demographic_stats_preview(field_name, display_method=None):
+            """Calcula estadísticas demográficas - IDÉNTICA a evaluation_results"""
+            # Obtener valores únicos con su conteo
+            field_values = evaluations.values(field_name).annotate(count=Count('id')).order_by(field_name)
+            
+            stats = []
+            for item in field_values:
+                value = item[field_name]
+                if not value:  # Saltar valores vacíos
+                    continue
+                
+                # Filtrar evaluaciones por este valor
+                filtered_evals = evaluations.filter(**{field_name: value})
+                count = filtered_evals.count()
+                
+                # Obtener label legible
+                if display_method:
+                    # Obtener una evaluación de ejemplo para usar get_FOO_display()
+                    sample_eval = filtered_evals.first()
+                    if sample_eval:
+                        label = getattr(sample_eval, display_method)()
+                    else:
+                        label = value
+                else:
+                    label = value
+                
+                # Calcular riesgo por dimensión para este grupo
+                group_risk_results = RiskResult.objects.filter(
+                    evaluation__in=filtered_evals
+                ).select_related('dimension')
+                
+                # Inicializar contadores por dimensión
+                dimension_risks = {}
+                for dim in all_dimensions:
+                    dimension_risks[dim.name] = {
+                        'BAJO': 0,
+                        'MEDIO': 0,
+                        'ALTO': 0,
+                        'porcentaje_bajo': 0.0,
+                        'porcentaje_medio': 0.0,
+                        'porcentaje_alto': 0.0,
+                    }
+                
+                # Contar resultados
+                for result in group_risk_results:
+                    dim_name = result.dimension.name
+                    if dim_name in dimension_risks:
+                        dimension_risks[dim_name][result.risk_level] += 1
+                
+                # Calcular porcentajes
+                if count > 0:
+                    for dim_name, risks in dimension_risks.items():
+                        risks['porcentaje_bajo'] = round((risks['BAJO'] / count) * 100, 1)
+                        risks['porcentaje_medio'] = round((risks['MEDIO'] / count) * 100, 1)
+                        risks['porcentaje_alto'] = round((risks['ALTO'] / count) * 100, 1)
+                
+                stats.append({
+                    'value': value,
+                    'label': label,
+                    'count': count,
+                    'dimension_risks': dimension_risks
+                })
+            
+            return stats
+        
+        demographic_data = {
+            'gender': calculate_demographic_stats_preview('gender', 'get_gender_display'),
+            'age_range': calculate_demographic_stats_preview('age_range', 'get_age_range_display'),
+            'work_area': calculate_demographic_stats_preview('work_area', 'get_work_area_display'),
+            'education_level': calculate_demographic_stats_preview('education_level', 'get_education_level_display'),
+            'experience_range': calculate_demographic_stats_preview('experience_range', 'get_experience_range_display'),
+            'ethnicity': calculate_demographic_stats_preview('ethnicity', 'get_ethnicity_display'),
+            'province': calculate_demographic_stats_preview('province'),
+            'city': calculate_demographic_stats_preview('city'),
+        }
+        
+        # ==================== CALCULAR DATOS DE CUMPLIMIENTO ====================
+        # Obtener empleados programados (todos los empleados de la empresa)
+        if company:
+            programmed_employees = Employee.objects.filter(company=company)
+        else:
+            if request.user.is_superuser or request.user.role == CustomUser.Role.SUPERUSER:
+                programmed_employees = Employee.objects.all()
+            else:
+                companies = request.user.managed_companies.all()
+                programmed_employees = Employee.objects.filter(company__in=companies)
+        
+        total_programmed = programmed_employees.count()
+        total_completed = total_evaluations_count
+        total_pending = total_programmed - total_completed
+        
+        if total_programmed > 0:
+            completion_percentage = min(100.0, max(0.0, round((total_completed / total_programmed * 100), 2)))
+        else:
+            completion_percentage = 0.0
+        completion_percentage = float(completion_percentage)
+        
+        # Función para calcular cumplimiento por categoría demográfica
+        def calculate_completion_stats_preview(employee_field, evaluation_field=None, display_method=None):
+            """Calcula estadísticas de cumplimiento por categoría demográfica"""
+            if evaluation_field is None:
+                evaluation_field = employee_field
+            
+            stats_dict = {}
+            
+            # Obtener todos los valores posibles de empleados programados
+            for employee in programmed_employees:
+                value = getattr(employee, employee_field, None)
+                if not value:
+                    continue
+                
+                if value not in stats_dict:
+                    # Obtener label legible - intentar primero desde Evaluation, luego desde Employee
+                    label = value
+                    if display_method:
+                        # Intentar obtener de Evaluation primero (tiene los choices definidos)
+                        sample_eval = evaluations.filter(**{evaluation_field: value}).first()
+                        if sample_eval and hasattr(sample_eval, display_method):
+                            label = getattr(sample_eval, display_method)()
+                        else:
+                            # Si no hay evaluación o no tiene el método, intentar desde Employee
+                            if hasattr(employee, display_method):
+                                label = getattr(employee, display_method)()
+                            else:
+                                # Si tampoco tiene el método, usar el valor directo
+                                label = value
+                    
+                    stats_dict[value] = {
+                        'value': value,
+                        'label': label,
+                        'programmed': 0,
+                        'completed': 0
+                    }
+                stats_dict[value]['programmed'] += 1
+            
+            # Contar completadas por este campo
+            for eval in evaluations:
+                value = getattr(eval, evaluation_field, None)
+                if value and value in stats_dict:
+                    stats_dict[value]['completed'] += 1
+            
+            # Calcular pending y completion_rate
+            stats = []
+            for stat in stats_dict.values():
+                stat['pending'] = stat['programmed'] - stat['completed']
+                stat['completion_rate'] = round((stat['completed'] / stat['programmed'] * 100), 2) if stat['programmed'] > 0 else 0
+                stats.append(stat)
+            
+            return sorted(stats, key=lambda x: x['value'])
+        
+        # Calcular cumplimiento para campos computados (age_range, experience_range)
+        def calculate_completion_stats_from_computed_preview(field_getter_name, evaluation_field, display_method_name):
+            """Calcula cumplimiento para campos que son propiedades computadas en Employee"""
+            stats_dict = {}
+            
+            # Obtener todos los valores posibles de empleados programados
+            for employee in programmed_employees:
+                value = getattr(employee, field_getter_name, None)
+                if not value:
+                    continue
+                
+                if value not in stats_dict:
+                    label = getattr(employee, display_method_name)()
+                    stats_dict[value] = {
+                        'value': value,
+                        'label': label,
+                        'programmed': 0,
+                        'completed': 0
+                    }
+                stats_dict[value]['programmed'] += 1
+            
+            # Contar completadas por este campo
+            for eval in evaluations:
+                value = getattr(eval, evaluation_field, None)
+                if value and value in stats_dict:
+                    stats_dict[value]['completed'] += 1
+            
+            # Calcular pending y completion_rate
+            stats = []
+            for stat in stats_dict.values():
+                stat['pending'] = stat['programmed'] - stat['completed']
+                stat['completion_rate'] = round((stat['completed'] / stat['programmed'] * 100), 2) if stat['programmed'] > 0 else 0
+                stats.append(stat)
+            
+            return sorted(stats, key=lambda x: x['value'])
+        
+        completion_data = {}
+        if total_programmed > 0:
+            completion_data = {
+                'gender': calculate_completion_stats_preview('gender', None, 'get_gender_display'),
+                'age_range': calculate_completion_stats_from_computed_preview('age_range', 'age_range', 'get_age_range_display'),
+                'work_area': calculate_completion_stats_preview('work_area_erp', 'work_area', 'get_work_area_display'),
+                'education_level': calculate_completion_stats_preview('education_level', None, 'get_education_level_display'),
+                'experience_range': calculate_completion_stats_from_computed_preview('experience_range', 'experience_range', 'get_experience_range_display'),
+            }
     
-    demographic_data = {
-        'gender': calculate_demographic_stats_preview('gender', 'get_gender_display'),
-        'age_range': calculate_demographic_stats_preview('age_range', 'get_age_range_display'),
-        'work_area': calculate_demographic_stats_preview('work_area', 'get_work_area_display'),
-        'education_level': calculate_demographic_stats_preview('education_level', 'get_education_level_display'),
-        'experience_range': calculate_demographic_stats_preview('experience_range', 'get_experience_range_display'),
-        'ethnicity': calculate_demographic_stats_preview('ethnicity', 'get_ethnicity_display'),
-        'province': calculate_demographic_stats_preview('province'),
-        'city': calculate_demographic_stats_preview('city'),
-    }
+        context = {
+            'company': company,
+            'year': year,
+            'selected_period': selected_period,
+            'available_periods': available_periods,
+            'total_evaluations_count': total_evaluations_count,
+            'all_dimensions': all_dimensions,
+            'dimension_stats': dimension_stats,
+            'dimension_stats_list': dimension_stats_list,
+            'global_score_counts': global_score_counts,
+            'global_score_percentages': global_score_percentages,
+            'overall_risk': overall_risk,
+            'general_recommendations': general_recommendations,
+            'demographic_data': demographic_data,
+            # Datos de cumplimiento
+            'total_programmed': total_programmed,
+            'total_completed': total_completed,
+            'total_pending': total_pending,
+            'completion_percentage': completion_percentage,
+            'completion_data': completion_data,
+        }
+        
+        return render(request, 'admin/pptx_preview.html', context)
     
-    context = {
-        'company': company,
-        'year': year,
-        'total_evaluations_count': total_evaluations_count,
-        'all_dimensions': all_dimensions,
-        'dimension_stats': dimension_stats,
-        'dimension_stats_list': dimension_stats_list,
-        'global_score_counts': global_score_counts,
-        'global_score_percentages': global_score_percentages,
-        'overall_risk': overall_risk,
-        'general_recommendations': general_recommendations,
-        'demographic_data': demographic_data,
-    }
-    
-    return render(request, 'admin/pptx_preview.html', context)
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"[ERROR] Error en preview_pptx_report: {e}")
+        print(error_detail)
+        messages.error(request, f'Error al generar la vista previa: {str(e)}')
+        return redirect('evaluation_results')
 
 
 @login_required
@@ -2948,15 +3637,20 @@ def pptx_progress_page(request, company_id=None):
         return redirect('employee_dashboard')
     
     year = request.GET.get('year', str(datetime.now().year))
+    period_id = request.GET.get('period_id', None)
     
     if company_id:
         company = get_object_or_404(Company, id=company_id)
         company_name = company.name
         generate_url = reverse('generate_pptx_with_screenshots_by_company', kwargs={'company_id': company_id}) + f'?year={year}'
+        if period_id:
+            generate_url += f'&period_id={period_id}'
         back_url = reverse('evaluation_results')
     else:
         company_name = "Resultados_Globales"
         generate_url = reverse('generate_pptx_with_screenshots') + f'?year={year}'
+        if period_id:
+            generate_url += f'&period_id={period_id}'
         back_url = reverse('evaluation_results')
     
     filename = f"Informe_Riesgo_Psicosocial_{company_name.replace(' ', '_')}_{year}.pptx"
@@ -3362,7 +4056,7 @@ def generate_pdf_with_playwright(request, company_id=None):
                 kwargs={'company_id': company_id} if company_id else None) + f'?year={year}'
     )
     
-    print(f"🌐 Navegando a preview PDF: {preview_url}")
+    print(f"[INFO] Navegando a preview PDF: {preview_url}")
     
     # Generar PDF con Playwright
     with sync_playwright() as p:
@@ -3379,16 +4073,16 @@ def generate_pdf_with_playwright(request, company_id=None):
             'secure': False
         }
         context.add_cookies([session_cookie])
-        print(f"🔐 Cookie de sesión agregada")
+        print(f"[INFO] Cookie de sesion agregada")
         
         page = context.new_page()
         
         # Navegar y esperar carga completa
         page.goto(preview_url, wait_until='load', timeout=120000)
-        print("✅ Página HTML cargada")
+        print("[OK] Pagina HTML cargada")
         
         # Esperar a que los gráficos se rendericen
-        print("⏳ Esperando renderizado de gráficos...")
+        print("[INFO] Esperando renderizado de graficos...")
         page.wait_for_timeout(15000)
         
         print("📄 Generando PDF...")
@@ -3406,7 +4100,7 @@ def generate_pdf_with_playwright(request, company_id=None):
         )
         
         browser.close()
-        print(f"✅ PDF generado: {len(pdf_bytes)} bytes")
+        print(f"[OK] PDF generado: {len(pdf_bytes)} bytes")
     
     # Retornar PDF
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
@@ -3419,160 +4113,222 @@ def generate_pdf_with_playwright(request, company_id=None):
 @login_required
 def generate_pptx_with_screenshots(request, company_id=None):
     """Genera PowerPoint capturando screenshots de los gráficos con Playwright"""
-    if not user_is_admin(request.user):
-        messages.error(request, 'No tienes permisos para acceder a esta página')
-        return redirect('employee_dashboard')
-    
     try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        messages.error(request, 'Playwright no está instalado. Ejecuta: pip install playwright && playwright install chromium')
-        return redirect('evaluation_results')
-    
-    # Construir URL de preview
-    if company_id:
-        preview_url = request.build_absolute_uri(
-            reverse('preview_pptx_report_by_company', kwargs={'company_id': company_id})
-        )
-        company = get_object_or_404(Company, id=company_id)
-        company_name = company.name
-    else:
-        preview_url = request.build_absolute_uri(reverse('preview_pptx_report'))
-        company_name = "Resultados_Globales"
-    
-    # Agregar año a la URL
-    year = request.GET.get('year', str(datetime.now().year))
-    preview_url += f'?year={year}'
-    
-    # Capturar screenshots con Playwright
-    screenshots = {}
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={'width': 1920, 'height': 1080})
+        if not user_is_admin(request.user):
+            return JsonResponse({'error': 'No tienes permisos para acceder a esta página'}, status=403)
         
-        # ⭐ IMPORTANTE: Pasar cookies de sesión para autenticación
-        # Obtener el sessionid del usuario actual
-        session_cookie = {
-            'name': 'sessionid',
-            'value': request.session.session_key,
-            'domain': '127.0.0.1',
-            'path': '/',
-            'httpOnly': True,
-            'secure': False
-        }
-        context.add_cookies([session_cookie])
-        print(f"🔐 Cookie de sesión agregada: {request.session.session_key[:10]}...")
-        
-        page = context.new_page()
-        
-        print(f"🌐 Navegando a: {preview_url}")
-        
-        # Estrategia simplificada: solo esperar 'load' y dar tiempo fijo
-        page.goto(preview_url, wait_until='load', timeout=120000)
-        
-        print("✅ Página HTML cargada")
-        
-        # Esperar tiempo fijo para que Chart.js y todos los gráficos se carguen
-        # Esto es más confiable que esperar por elementos específicos
-        print("⏳ Esperando 15 segundos para que se carguen y rendericen todos los gráficos...")
-        page.wait_for_timeout(15000)  # 15 segundos fijos
-        
-        print("✅ Tiempo de espera completado, iniciando captura de screenshots...")
-        
-        # Debugging: verificar qué hay en la página
         try:
-            # Primero verificar si hay ALGÚN elemento en la página
-            body_content = page.content()
-            print(f"📄 Contenido HTML recibido: {len(body_content)} caracteres")
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return JsonResponse({'error': 'Playwright no está instalado. Ejecuta: pip install playwright && playwright install chromium'}, status=500)
+        
+        # Construir URL de preview
+        try:
+            if company_id:
+                company = get_object_or_404(Company, id=company_id)
+                company_name = company.name
+                preview_url = request.build_absolute_uri(
+                    reverse('preview_pptx_report_by_company', kwargs={'company_id': company_id})
+                )
+            else:
+                preview_url = request.build_absolute_uri(reverse('preview_pptx_report'))
+                company_name = "Resultados_Globales"
             
-            # Intentar contar slides de varias formas
-            slide_count = page.locator('.slide').count()
-            print(f"📊 Slides encontradas con '.slide': {slide_count}")
+            # Agregar año y período a la URL
+            year = request.GET.get('year', str(datetime.now().year))
+            preview_url += f'?year={year}'
+            period_id = request.GET.get('period_id', None)
+            if period_id:
+                preview_url += f'&period_id={period_id}'
             
-            if slide_count == 0:
-                print("⚠️ No se encontraron elementos con clase 'slide'")
-                # Intentar buscar por ID
-                all_divs = page.locator('div[id^="slide-"]').count()
-                print(f"📊 Elementos con id 'slide-*': {all_divs}")
+            print(f"🔗 URL de preview construida: {preview_url}")
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            print(f"[ERROR] Error construyendo URL: {e}\n{error_detail}")
+            return JsonResponse({
+                'error': f'Error construyendo URL de preview: {str(e)}'
+            }, status=500)
+        
+        # Capturar screenshots con Playwright
+        screenshots = {}
+        
+        with sync_playwright() as p:
+            browser = None
+            try:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(viewport={'width': 1920, 'height': 1080})
                 
-                # Guardar HTML para debugging
-                with open('debug_page.html', 'w', encoding='utf-8') as f:
-                    f.write(body_content)
-                print("💾 HTML guardado en debug_page.html para inspección")
-            
-            # Capturar cada slide por índice
-            for idx in range(slide_count):
+                # ⭐ IMPORTANTE: Pasar cookies de sesión para autenticación
+                if not request.session.session_key:
+                    return JsonResponse({
+                        'error': 'Error de sesión. Por favor, inicia sesión nuevamente.'
+                    }, status=403)
+                
+                session_cookie = {
+                    'name': 'sessionid',
+                    'value': request.session.session_key,
+                    'domain': '127.0.0.1',
+                    'path': '/',
+                    'httpOnly': True,
+                    'secure': False
+                }
+                context.add_cookies([session_cookie])
+                print(f"[INFO] Cookie de sesion agregada")
+                
+                page = context.new_page()
+                
+                print(f"[INFO] Navegando a: {preview_url}")
+                
+                # Navegar y esperar carga completa
                 try:
-                    print(f"🎯 Intentando capturar slide {idx+1}/{slide_count}...")
-                    element = page.locator('.slide').nth(idx)
-                    
-                    # Verificar que el elemento existe
-                    is_visible = element.is_visible()
-                    print(f"   Visible: {is_visible}")
-                    
-                    screenshot_bytes = element.screenshot()
-                    screenshots[f'slide-{idx+1}'] = screenshot_bytes
-                    print(f"✅ Capturada slide {idx+1}/{slide_count} ({len(screenshot_bytes)} bytes)")
+                    page.goto(preview_url, wait_until='load', timeout=120000)
+                    print("[OK] Pagina HTML cargada")
                 except Exception as e:
-                    print(f"❌ Error capturando slide {idx+1}: {e}")
+                    print(f"[ERROR] Error navegando a la URL: {e}")
+                    # Verificar si la página tiene contenido
+                    try:
+                        page_content = page.content()
+                        if 'error' in page_content.lower() or 'exception' in page_content.lower():
+                            return JsonResponse({
+                                'error': f'La página de preview tiene errores. Verifica que la URL sea correcta: {preview_url}'
+                            }, status=500)
+                    except:
+                        pass
+                    raise
+                
+                # Esperar tiempo fijo para que Chart.js y todos los gráficos se carguen
+                print("[INFO] Esperando 20 segundos para que se carguen y rendericen todos los graficos...")
+                page.wait_for_timeout(20000)  # 20 segundos para asegurar que todo se carga
+                
+                print("[OK] Tiempo de espera completado, iniciando captura de screenshots...")
+                
+                try:
+                    # Buscar todos los slides por ID (más confiable que por clase)
+                    slide_ids = page.evaluate("""
+                        () => {
+                            const slides = Array.from(document.querySelectorAll('[id^="slide-"]'));
+                            return slides.map(s => s.id).sort();
+                        }
+                    """)
+                    
+                    print(f"[INFO] Slides encontrados por ID: {len(slide_ids)}")
+                    
+                    if not slide_ids:
+                        # Fallback: buscar por clase
+                        slide_count = page.locator('.slide').count()
+                        print(f"[INFO] Slides encontrados por clase: {slide_count}")
+                        slide_ids = [f'slide-{i+1}' for i in range(slide_count)]
+                    
+                    if not slide_ids:
+                        raise Exception("No se encontraron slides en la página")
+                    
+                    # Capturar cada slide activándolo primero con JavaScript
+                    for idx, slide_id in enumerate(slide_ids, 1):
+                        try:
+                            print(f"[INFO] Capturando slide {idx}/{len(slide_ids)}: {slide_id}...")
+                            
+                            # Activar el slide con JavaScript
+                            page.evaluate(f"""
+                                () => {{
+                                    // Ocultar todos los slides
+                                    document.querySelectorAll('.slide').forEach(s => {{
+                                        s.classList.remove('active');
+                                        s.style.display = 'none';
+                                    }});
+                                    // Mostrar el slide actual
+                                    const slide = document.getElementById('{slide_id}');
+                                    if (slide) {{
+                                        slide.classList.add('active');
+                                        slide.style.display = 'flex';
+                                        slide.style.opacity = '1';
+                                    }}
+                                }}
+                            """)
+                            
+                            # Esperar un momento para que se renderice
+                            page.wait_for_timeout(1000)
+                            
+                            # Capturar el slide completo
+                            element = page.locator(f'#{slide_id}')
+                            screenshot_bytes = element.screenshot()
+                            screenshots[f'slide-{idx}'] = screenshot_bytes
+                            print(f"[OK] Capturada slide {idx}/{len(slide_ids)} ({len(screenshot_bytes)} bytes)")
+                        except Exception as e:
+                            print(f"[ERROR] Error capturando slide {idx} ({slide_id}): {e}")
+                            import traceback
+                            traceback.print_exc()
+                            continue
+                    
+                    print(f"🎉 Total capturadas: {len(screenshots)} slides")
+                except Exception as e:
+                    print(f"[ERROR] Error general capturando slides: {e}")
                     import traceback
                     traceback.print_exc()
-                    continue
-            
-            print(f"🎉 Total capturadas: {len(screenshots)} slides")
-        except Exception as e:
-            print(f"❌ Error general capturando slides: {e}")
-            import traceback
-            traceback.print_exc()
+                    raise
+                
+                browser.close()
+            except Exception as e:
+                if browser:
+                    try:
+                        browser.close()
+                    except:
+                        pass
+                raise Exception(f"Error en Playwright: {str(e)}")
         
-        browser.close()
+        # VALIDAR que se capturaron slides
+        if not screenshots:
+            raise Exception("No se pudieron capturar las gráficas. Intenta nuevamente.")
+        
+        print(f"[INFO] Creando PowerPoint con {len(screenshots)} slides...")
+        
+        # Crear PowerPoint con las imágenes
+        from pptx import Presentation
+        from pptx.util import Inches
+        from io import BytesIO
+        
+        prs = Presentation()
+        prs.slide_width = Inches(10)
+        prs.slide_height = Inches(5.625)
+        
+        # Ordenar slides por número
+        sorted_screenshots = sorted(screenshots.items(), key=lambda x: int(x[0].split('-')[1]))
+        
+        for idx, (slide_id, img_bytes) in enumerate(sorted_screenshots, 1):
+            try:
+                slide_layout = prs.slide_layouts[6]  # Blank layout
+                slide = prs.slides.add_slide(slide_layout)
+                
+                # Agregar imagen
+                img_stream = BytesIO(img_bytes)
+                left = Inches(0)
+                top = Inches(0)
+                width = Inches(10)
+                slide.shapes.add_picture(img_stream, left, top, width=width)
+                print(f"[OK] Slide {idx} agregada al PowerPoint")
+            except Exception as e:
+                print(f"[ERROR] Error agregando slide {idx} al PowerPoint: {e}")
+                raise
+        
+        # Guardar y retornar
+        pptx_stream = BytesIO()
+        prs.save(pptx_stream)
+        pptx_stream.seek(0)
+        
+        response = HttpResponse(
+            pptx_stream,
+            content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
+        filename = f"Informe_Riesgo_Psicosocial_{company_name.replace(' ', '_')}_{year}.pptx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
     
-    # VALIDAR que se capturaron slides
-    if not screenshots:
-        print("❌ ERROR: No se capturaron screenshots. El PowerPoint estaría vacío.")
-        messages.error(request, 'No se pudieron capturar las gráficas. Intenta nuevamente.')
-        return redirect('evaluation_results')
-    
-    print(f"📦 Creando PowerPoint con {len(screenshots)} slides...")
-    
-    # Crear PowerPoint con las imágenes
-    from pptx import Presentation
-    from pptx.util import Inches
-    from io import BytesIO
-    
-    prs = Presentation()
-    prs.slide_width = Inches(10)
-    prs.slide_height = Inches(5.625)
-    
-    # Ordenar slides por número
-    sorted_screenshots = sorted(screenshots.items(), key=lambda x: int(x[0].split('-')[1]))
-    
-    for idx, (slide_id, img_bytes) in enumerate(sorted_screenshots, 1):
-        try:
-            slide_layout = prs.slide_layouts[6]  # Blank layout
-            slide = prs.slides.add_slide(slide_layout)
-            
-            # Agregar imagen
-            img_stream = BytesIO(img_bytes)
-            left = Inches(0)
-            top = Inches(0)
-            width = Inches(10)
-            slide.shapes.add_picture(img_stream, left, top, width=width)
-            print(f"✅ Slide {idx} agregada al PowerPoint")
-        except Exception as e:
-            print(f"❌ Error agregando slide {idx} al PowerPoint: {e}")
-    
-    # Guardar y retornar
-    pptx_stream = BytesIO()
-    prs.save(pptx_stream)
-    pptx_stream.seek(0)
-    
-    response = HttpResponse(
-        pptx_stream,
-        content_type='application/vnd.openxmlformats-officedocument.presentationml.presentation'
-    )
-    filename = f"Informe_Riesgo_Psicosocial_{company_name.replace(' ', '_')}_{year}.pptx"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
-    return response
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"[ERROR CRITICO] Error generando PowerPoint: {e}")
+        print(error_detail)
+        return JsonResponse({
+            'error': f'Ocurrió un error al generar el PowerPoint: {str(e)}'
+        }, status=500)

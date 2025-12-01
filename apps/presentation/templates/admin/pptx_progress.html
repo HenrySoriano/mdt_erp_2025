@@ -192,7 +192,16 @@
             
             fetch(url)
                 .then(response => {
-                    if (!response.ok) throw new Error('Error generando PowerPoint');
+                    // Verificar si la respuesta es JSON (error) o blob (éxito)
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Error desconocido al generar PowerPoint');
+                        });
+                    }
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
+                    }
                     return response.blob();
                 })
                 .then(blob => {
@@ -206,22 +215,29 @@
                     document.getElementById('statusText').textContent = '¡Completado! Descargando...';
                     
                     // Descargar archivo
-                    const url = window.URL.createObjectURL(blob);
+                    const downloadUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = url;
+                    a.href = downloadUrl;
                     a.download = '{{ filename }}';
                     document.body.appendChild(a);
                     a.click();
-                    window.URL.revokeObjectURL(url);
+                    window.URL.revokeObjectURL(downloadUrl);
+                    document.body.removeChild(a);
                     
                     // Mensaje de éxito
                     setTimeout(() => {
                         document.getElementById('statusText').textContent = '✅ ¡Descarga completada exitosamente!';
-                        document.querySelector('.bg-blue-50').classList.remove('bg-blue-50', 'border-blue-500');
-                        document.querySelector('.bg-blue-50').classList.add('bg-green-50', 'border-green-500');
-                        document.querySelector('.text-blue-800').classList.remove('text-blue-800');
-                        document.querySelector('.text-blue-800').classList.add('text-green-800');
-                        document.querySelector('.text-blue-800').innerHTML = '<strong>¡Listo!</strong><br>Tu presentación PowerPoint ha sido descargada correctamente. Puedes cerrar esta ventana.';
+                        const infoBox = document.querySelector('.bg-blue-50');
+                        if (infoBox) {
+                            infoBox.classList.remove('bg-blue-50', 'border-blue-500');
+                            infoBox.classList.add('bg-green-50', 'border-green-500');
+                            const textElement = infoBox.querySelector('.text-blue-800');
+                            if (textElement) {
+                                textElement.classList.remove('text-blue-800');
+                                textElement.classList.add('text-green-800');
+                                textElement.innerHTML = '<strong>¡Listo!</strong><br>Tu presentación PowerPoint ha sido descargada correctamente. Puedes cerrar esta ventana.';
+                            }
+                        }
                         
                         // Redirigir después de 3 segundos
                         setTimeout(() => {
@@ -231,10 +247,27 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    const errorMessage = error.message || 'Error desconocido al generar PowerPoint';
                     document.getElementById('statusText').textContent = '❌ Error al generar PowerPoint';
                     document.getElementById('progressBar').classList.remove('shimmer');
                     document.getElementById('progressBar').classList.add('bg-red-500');
-                    alert('Ocurrió un error al generar el PowerPoint. Por favor, intenta nuevamente.');
+                    document.getElementById('progressBar').style.width = '100%';
+                    document.getElementById('percentageText').textContent = 'Error';
+                    
+                    // Mostrar mensaje de error más detallado
+                    const infoBox = document.querySelector('.bg-blue-50');
+                    if (infoBox) {
+                        infoBox.classList.remove('bg-blue-50', 'border-blue-500');
+                        infoBox.classList.add('bg-red-50', 'border-red-500');
+                        const textElement = infoBox.querySelector('.text-blue-800');
+                        if (textElement) {
+                            textElement.classList.remove('text-blue-800');
+                            textElement.classList.add('text-red-800');
+                            textElement.innerHTML = `<strong>Error:</strong><br>${errorMessage}<br><br>Por favor, verifica que todos los gráficos se hayan cargado correctamente e intenta nuevamente.`;
+                        }
+                    }
+                    
+                    alert(`Ocurrió un error al generar el PowerPoint.\n\n${errorMessage}\n\nPor favor, intenta nuevamente.`);
                 });
         };
     </script>

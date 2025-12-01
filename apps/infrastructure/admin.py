@@ -1,7 +1,7 @@
 from django.contrib import admin
 from apps.infrastructure.models import (
     CustomUser, Company, Employee, Dimension, Question, 
-    Evaluation, Response, RiskResult
+    Evaluation, Response, RiskResult, EvaluationPeriod
 )
 
 
@@ -85,3 +85,25 @@ class RiskResultAdmin(admin.ModelAdmin):
     list_filter = ('risk_level', 'dimension')
     search_fields = ('evaluation__employee__first_name', 'evaluation__employee__last_name')
     ordering = ('-calculated_at',)
+
+
+@admin.register(EvaluationPeriod)
+class EvaluationPeriodAdmin(admin.ModelAdmin):
+    list_display = ('name', 'company', 'start_date', 'end_date', 'is_active', 'year', 'duration_days_display')
+    list_filter = ('is_active', 'year', 'company')
+    search_fields = ('name', 'company__name')
+    ordering = ('-start_date',)
+    date_hierarchy = 'start_date'
+    
+    fieldsets = (
+        ('Información General', {
+            'fields': ('company', 'name', 'year')
+        }),
+        ('Fechas', {
+            'fields': ('start_date', 'end_date', 'is_active')
+        }),
+    )
+    
+    def duration_days_display(self, obj):
+        return f"{obj.duration_days} días"
+    duration_days_display.short_description = 'Duración'
